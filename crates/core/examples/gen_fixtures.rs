@@ -1435,7 +1435,7 @@ fn build_full_pdf(full_jpg: &[u8], img_w: u32, img_h: u32) -> Result<Vec<u8>> {
         )
         .into_bytes(),
         // 4: Page
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 5 0 R /Resources << /XObject << /Im0 6 0 R >> >> /Metadata 3 0 R /PieceInfo << /Illustrator << /Private (Example Private Data) >> >> /Thumb 7 0 R >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 5 0 R /Resources << /XObject << /Im0 6 0 R >> >> /Metadata 9 0 R /PieceInfo << /Illustrator << /Private (Example Private Data) >> >> /Thumb 7 0 R >>".to_vec(),
         // 5: Contents
         b"<< /Length 39 >>\nstream\nq 200 0 0 150 100 500 cm /Im0 Do Q\nendstream".to_vec(),
         // 6: DCTDecode image
@@ -1459,6 +1459,15 @@ fn build_full_pdf(full_jpg: &[u8], img_w: u32, img_h: u32) -> Result<Vec<u8>> {
         // 8: Initial Info dict (Author: Example Author)
         format!(
             "<< /Title ({TITLE}) /Author ({AUTHOR}) /Subject ({SUBJECT}) /Keywords ({KEYWORDS}) /Creator ({SOFTWARE}) /Producer ({SOFTWARE}) /CreationDate ({DATE_TIME_PDF}) /ModDate ({DATE_TIME_PDF}) >>"
+        )
+        .into_bytes(),
+        // 9: The page's own XMP stream, separate from the catalog's so that
+        // removing /Metadata from only one of the two dictionaries leaves a
+        // stream behind.
+        format!(
+            "<< /Type /Metadata /Subtype /XML /Length {} >>\nstream\n{}\nendstream",
+            xmp.len(),
+            xmp
         )
         .into_bytes(),
     ];
