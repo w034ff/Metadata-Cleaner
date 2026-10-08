@@ -83,3 +83,32 @@ fn corrupt_images_fail_to_decode_by_image_crate() {
         );
     }
 }
+
+/// The MPF entry of full.jpg must point at the image after EOI, as a camera's
+/// would, so that the cleaner is tested on a real multi-picture file.
+#[test]
+fn full_jpg_mpf_points_at_the_second_image() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join(gen_fixtures::FIXTURES_DIR);
+    let jpeg = std::fs::read(dir.join("full.jpg")).expect("reading full.jpg");
+    let marker = b"\xFF\xE2";
+    let mpf = jpeg
+        .windows(8)
+        .position(|w| w.starts_with(marker) && &w[4..8] == b"MPF\0")
+        .expect("full.jpg has an MPF segment");
+    let tiff = mpf + 8;
+    let le_u32 = |at: usize| u32::from_le_bytes(jpeg[at..at + 4].try_into().unwrap()) as usize;
+    // The MP Index IFD follows the 8-byte TIFF header: a 2-byte count, then
+    // 12-byte entries. MPEntry is the third entry, and its value offset is
+    // the entry's last 4 bytes. Each MPEntry value is 16 bytes.
+    let entries = tiff + le_u32(tiff + 8 + 2 + 2 * 12 + 8);
+    let (first_size, second_size, second_offset) = (
+        le_u32(entries + 4),
+        le_u32(entries + 20),
+        le_u32(entries + 24),
+    );
+    let second = tiff + second_offset;
+    assert_eq!(&jpeg[first_size - 2..first_size], b"\xFF\xD9");
+    assert_eq!(second, first_size);
+    assert_eq!(&jpeg[second..second + 2], b"\xFF\xD8");
+    assert_eq!(second + second_size, jpeg.len());
+}

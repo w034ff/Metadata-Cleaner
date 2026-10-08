@@ -782,7 +782,9 @@ fn build_full_jpeg(pixels: &[u8], w: u32, h: u32) -> Result<Vec<u8>> {
     // Marker + Length = 4 bytes -> total MPF segment = 90 bytes
     let mpf_tiff_len = 8 + 74;
     let mpf_seg_len = 2 + 4 + mpf_tiff_len;
-    let distance_to_second_jpeg = (4 + mpf_tiff_len) + suffix.len();
+    // MPF offsets count from the MPF TIFF header, which starts right after
+    // "MPF\0"; the second image follows the rest of the first one.
+    let distance_to_second_jpeg = mpf_tiff_len + suffix.len();
     let image1_size = prefix.len() + (2 + mpf_seg_len) + suffix.len();
 
     let mpf_app2 = build_mpf_app2(
