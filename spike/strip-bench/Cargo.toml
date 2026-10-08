@@ -1,0 +1,15 @@
+[package]
+name = "strip-bench"
+version = "0.1.0"
+publish = false
+edition = "2024"
+
+[dependencies]
+crc32fast = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+kamadak-exif = "0.6.1"
+lopdf = { version = "0.45.0", default-features = false }
+pdfium-render = "0.9.4"
+
+# Built on its own, outside the app workspace.
+[workspace]
