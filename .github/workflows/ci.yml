@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      # Installs the version and components pinned in rust-toolchain.toml.
+      - name: Setup Rust toolchain
+        run: rustup toolchain install
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./ -> target"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Code Format Check
+        run: npm run format:check
+
+      - name: Frontend Lint
+        run: npm run lint
+
+      - name: Frontend Typecheck
+        run: npm run typecheck
+
+      - name: Frontend Test
+        run: npm test
+
+      - name: Rust Format Check
+        run: cargo fmt --check
+
+      - name: Rust Clippy
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Rust Test
+        run: cargo test --workspace --all-features --locked
+
+      # The Rust test above rewrites src/ipc/generated; the committed copy
+      # must already be what it writes.
+      - name: Check TypeScript bindings diff
+        shell: bash
+        run: |
+          status=$(git status --porcelain src/ipc/generated)
+          if [ -n "$status" ]; then
+            echo "src/ipc/generated is out of date. Run cargo test --workspace --all-features and commit the result."
+            echo "$status"
+            exit 1
+          fi
+
+      # The release build has no test hooks; the worker must still build and
+      # pass its own tests without them.
+      - name: Rust Test Without Test Hooks
+        run: cargo test -p mcleaner-worker --lib --locked

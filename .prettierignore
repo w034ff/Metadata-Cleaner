@@ -1,0 +1,9 @@
+docs/
+spike/
+src-tauri/gen/
+target/
+dist/
+package-lock.json
+Cargo.lock
+src/licenses/third-party-licenses.json
+src/ipc/generated/

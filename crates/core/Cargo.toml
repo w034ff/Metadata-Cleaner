@@ -1,0 +1,29 @@
+[package]
+name = "mcleaner-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# Classifies EXIF entries and reads the orientation and resolution to keep
+# (design §2, §4.5).
+kamadak-exif = "0.6.1"
+# The CRC of the eXIf chunk that replaces a PNG's EXIF (design §4.3, §4.5).
+crc32fast = "1"
+# The inspection results cross the worker pipe as JSON and reach the
+# frontend through generated types (design §4.7, §5.1).
+serde = { version = "1", features = ["derive"] }
+ts-rs = "12"
+
+# Only examples/gen_fixtures.rs and the tests use these (design §11.1, §11.2).
+[dev-dependencies]
+# Decodes the images before and after cleaning to compare their pixels.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+# Writes the progressive and CMYK JPEGs, which image cannot.
+jpeg-encoder = "0.7.1"
+# The standard security handler of encrypted.pdf and restricted.pdf is MD5-based.
+md-5 = "0.11"

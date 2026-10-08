@@ -1,0 +1,34 @@
+[package]
+name = "mcleaner-worker"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+# Requests that crash, hang or exhaust memory on purpose, to test how the main
+# process copes (design §11.3). Never enabled in release builds.
+test-hooks = []
+
+[dependencies]
+mcleaner-core = { path = "../core" }
+# The only crate that parses PDFs, so that a hostile PDF can bring down the
+# worker but never the app (design §1, §9). chrono-clock and rayon are off:
+# the worker writes no dates and runs one request at a time (design §2).
+lopdf = { version = "0.45.0", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rlimit = "0.11"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
+[dev-dependencies]
+# Renders each PDF before and after cleaning to compare the pixels
+# (design §11.2); pure Rust, so CI downloads nothing.
+hayro = "0.8"

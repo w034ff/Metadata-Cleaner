@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/worker",
+    "src-tauri",
+]
+resolver = "2"
+
+[workspace.lints.rust]
+# Denied rather than forbidden so that crates/worker/src/windows_job.rs alone
+# can opt in; see the reason at the top of that module.
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = "warn"

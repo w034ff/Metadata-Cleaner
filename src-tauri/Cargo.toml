@@ -1,0 +1,33 @@
+[package]
+name = "metadata-cleaner"
+version = "0.1.0"
+description = "Remove metadata from images and PDFs, offline"
+authors = ["w034ff"]
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+name = "metadata_cleaner_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+mcleaner-core = { path = "../crates/core" }
+mcleaner-worker = { path = "../crates/worker" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ts-rs = "12"
+tauri-plugin-dialog = "2"
+# Writes each output next to its final name and renames it without
+# overwriting (design §6.5).
+tempfile = "3"
+
+[features]
+test-hooks = ["mcleaner-worker/test-hooks"]
