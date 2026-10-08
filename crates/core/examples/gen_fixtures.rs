@@ -41,6 +41,12 @@ pub const CITY: &str = "Example City";
 pub const STATE: &str = "Example State";
 pub const COUNTRY: &str = "Example Country";
 
+/// The description of the ICC profile. The profile is kept when cleaning, so
+/// its text uses none of the fictional values above, which tests look for in
+/// cleaned output.
+pub const ICC_DESCRIPTION: &str = "Fixture sRGB";
+const ICC_COPYRIGHT: &str = "No copyright, use freely";
+
 pub const LATITUDE_DEG: u32 = 12;
 pub const LATITUDE_MIN: u32 = 34;
 pub const LATITUDE_SEC: u32 = 0;
@@ -337,8 +343,7 @@ pub fn generate_icc_profile() -> Vec<u8> {
 
     // Build tag data payloads.
     // 1. desc: textDescriptionType
-    let desc_str = "Example sRGB";
-    let desc_bytes = desc_str.as_bytes();
+    let desc_bytes = ICC_DESCRIPTION.as_bytes();
     let desc_ascii_count = (desc_bytes.len() + 1) as u32;
     let mut desc_payload = Vec::new();
     desc_payload.extend_from_slice(b"desc");
@@ -354,7 +359,7 @@ pub fn generate_icc_profile() -> Vec<u8> {
     pad_to_4(&mut desc_payload);
 
     // 2. cprt: textType
-    let cprt_bytes = COPYRIGHT.as_bytes();
+    let cprt_bytes = ICC_COPYRIGHT.as_bytes();
     let mut cprt_payload = Vec::new();
     cprt_payload.extend_from_slice(b"text");
     cprt_payload.extend_from_slice(&0u32.to_be_bytes());
@@ -434,13 +439,8 @@ pub fn generate_icc_profile() -> Vec<u8> {
     header[12..16].copy_from_slice(b"mntr");
     header[16..20].copy_from_slice(b"RGB ");
     header[20..24].copy_from_slice(b"XYZ ");
-    // Date/time: 2026-01-02 03:04:05
-    header[24..26].copy_from_slice(&2026u16.to_be_bytes());
-    header[26..28].copy_from_slice(&1u16.to_be_bytes());
-    header[28..30].copy_from_slice(&2u16.to_be_bytes());
-    header[30..32].copy_from_slice(&3u16.to_be_bytes());
-    header[32..34].copy_from_slice(&4u16.to_be_bytes());
-    header[34..36].copy_from_slice(&5u16.to_be_bytes());
+    // The creation date (bytes 24..36) stays zero: the profile is kept when
+    // cleaning, so it must not carry the fixtures' DATE_TIME.
     header[36..40].copy_from_slice(b"acsp");
     header[40..44].copy_from_slice(b"APPL");
     // Illuminant D50
@@ -1115,7 +1115,7 @@ fn build_full_png(pixels: &[u8], w: u32, h: u32) -> Result<Vec<u8>> {
 
     // 1. iCCP
     let icc = generate_icc_profile();
-    let mut iccp_data = b"Example sRGB\0\0".to_vec();
+    let mut iccp_data = [ICC_DESCRIPTION.as_bytes(), b"\0\0"].concat();
     iccp_data.extend_from_slice(&zlib_deflate_stored(&icc));
     let iccp_chunk = make_png_chunk(b"iCCP", &iccp_data);
 
