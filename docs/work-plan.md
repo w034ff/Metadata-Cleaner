@@ -180,7 +180,7 @@ PDF Converter の work-plan §2.4 と同じ。報告を書き終えたら、最�
 完了条件:
 - すべてのフィクスチャがコミットされ、`gen_fixtures` を実行し直すと同じファイルができる。
 - 各フィクスチャを ExifTool（`exiftool -a -G1 -s`）で読み、design.md §11.1 の「内容」のメタデータが読み出されることを確かめ、その出力の要点を報告に書く（ICC・XMP・IPTC が警告なしで読めること。スパイク §5 では偽のものが読めなかった）。ExifTool はオーナーの環境に入っている。
-- `encrypted.pdf` と `restricted.pdf` を lopdf で読み、`was_encrypted()` が真になることをテストで確かめる。
+- lopdf で読み、`encrypted.pdf` は `is_encrypted()` が真（閲覧のパスワードがないと復号できない）、`restricted.pdf` は `was_encrypted()` が真（空のパスワードで復号される）になることを、`crates/worker` のテストで確かめる（design.md §4.6。`crates/core` は lopdf に依存できない）。
 
 ### T03 画像の読み書き（JPEG・PNG・WebP）
 

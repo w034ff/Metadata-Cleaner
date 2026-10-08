@@ -411,7 +411,7 @@ PDF Converter 設計 §9 と同じにする（capabilities は `core:*` の最�
 | `no_jfif_dpi.jpg` | JFIF がなく、EXIF にだけ解像度がある JPEG | 解像度の保持 |
 | `full.png` | `tEXt`（IDAT の前と後ろ）、`zTXt`、XMP の `iTXt`、`eXIf`（GPS と向き）、`tIME`、`iCCP`、`pHYs`、IEND の後ろのデータ | PNG の除去と保持 |
 | `anim.png` | APNG（`acTL` `fcTL` `fdAT`）と `tEXt` | アニメーションの保持 |
-| `full.webp` | VP8X、ALPH、EXIF（GPS と向き）、XMP、ICCP | WebP の除去と保持 |
+| `full.webp` | VP8X、透過のある VP8L、EXIF（GPS と向き）、XMP、ICCP | WebP の除去と保持 |
 | `anim.webp` | アニメーションの WebP（ANIM、ANMF）と XMP | アニメーションの保持 |
 | `clean.jpg` / `clean.png` / `clean.webp` | メタデータのない画像 | 「メタデータなし」 |
 | `webp_named.jpg` | 中身が WebP の `.jpg` | 拡張子と中身の食い違い |
@@ -423,6 +423,7 @@ PDF Converter 設計 §9 と同じにする（capabilities は `core:*` の最�
 
 - プログレッシブの JPEG は `jpeg-encoder` の `set_progressive` で作り、生成したバイト列のスキャンの間にセグメントを差し込む。
 - ICC は、`gen_fixtures` が sRGB の行列と TRC を持つ最小の v2 プロファイルを組み立てる（第三者のプロファイルのファイルを使わないため）。
+- WebP のフィクスチャは可逆（VP8L）だけにする。`image` は不可逆の VP8 を書けず、`ALPH` は VP8 と組み合わせるチャンクなので、`ALPH` を持つファイルは作れない。`ALPH` を残すことは、チャンクの並びを組み立てた単体テストで確かめる（T03）。
 - 暗号化された PDF は、PDF Converter の `gen_fixtures` の RC4 の実装を写して作る（生成し直しても同じファイルになるようにするため。PDF Converter 設計 §11.1）。
 - `crates/core/tests/fixtures.rs` が、生成し直したバイト列とコミット済みのファイルを比べる（PDF Converter と同じ）。
 
