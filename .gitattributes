@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+# Fixtures are compared byte for byte, so line endings are never converted.
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
