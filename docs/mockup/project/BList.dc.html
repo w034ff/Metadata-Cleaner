@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>案 B：追加したあと</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0e6b66}a:hover{color:#0a4f4b}
+.btn{font:inherit;font-size:13px;border-radius:6px;padding:0 14px;min-height:36px;cursor:pointer}
+.btn-primary{background:#0e6b66;color:#fff;border:1px solid #0e6b66;font-weight:500}
+.btn-ghost{background:#fff;color:#1f1f1f;border:1px solid #cfcbc4}
+.row-btn{font:inherit;font-size:13px;color:#1f1f1f;background:none;border:0;padding:0;text-align:left;cursor:pointer;word-break:break-all}
+.label{font-size:13px;font-weight:500;color:#1f1f1f}
+.hint{font-size:12px;color:#5c5a56}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:#5c5a56}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:1;padding:4px 8px;border-radius:999px;background:#efede8;color:#4a4844;white-space:nowrap}
+.chip-loc{background:#fbecd0;color:#6b4100;font-weight:500}
+th{font-size:12px;font-weight:500;color:#5c5a56;text-align:left;padding:8px 12px;border-bottom:1px solid #dcd9d3;background:#faf9f7;white-space:nowrap}
+td{font-size:13px;padding:8px 12px;border-bottom:1px solid #ebe8e3;vertical-align:top}
+dt{font-size:12px;color:#5c5a56}
+dd{margin:0 0 8px;font-size:13px}
+</style>
+</helmet>
+<div style="min-height: 800px; display: flex; flex-direction: column; background: #f4f3f0; color: #1f1f1f; font-family: 'Noto Sans JP', system-ui, sans-serif">
+  <header style="height: 48px; display: flex; align-items: center; gap: 24px; padding: 0 16px; background: #ffffff; border-bottom: 1px solid #dcd9d3">
+    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0e6b66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20H9l-5-5a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L12 20"></path><path d="M8.5 8.5l7 7"></path></svg>
+      Metadata Cleaner
+    </div>
+    <div style="margin-left: auto; display: flex; gap: 24px; align-items: center">
+      <select aria-label="言語" style="font: inherit; font-size: 13px; min-height: 32px; border: 1px solid #cfcbc4; border-radius: 6px; padding: 0 8px; background: #fff; color: #1f1f1f; cursor: pointer"><option>日本語</option><option>English</option></select>
+      <button aria-label="このアプリについて" style="font: inherit; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cfcbc4; border-radius: 6px; background: #fff; color: #1f1f1f; cursor: pointer; padding: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg></button>
+    </div>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0">
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px 24px; box-sizing: border-box">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: #ffffff; border: 1px solid #dcd9d3; border-radius: 8px">
+        <span class="label">保存先フォルダ</span>
+        <span class="mono" style="word-break: break-all">cleaned</span>
+        <button class="btn btn-ghost" style="min-height: 32px">フォルダを選ぶ</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+        <span class="label">ファイル 6 件</span>
+        <div style="margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap">
+          <button class="btn btn-ghost">ファイルを追加</button>
+          <button class="btn btn-ghost">フォルダを追加</button>
+          <button class="btn btn-ghost">すべて外す</button>
+        </div>
+      </div>
+      <div style="background: #ffffff; border: 1px solid #dcd9d3; border-radius: 8px; overflow-x: auto">
+        <table style="width: 100%; border-collapse: collapse; table-layout: fixed">
+          <thead><tr><th>ファイル名</th><th style="width: 56px">形式</th><th style="width: 72px; text-align: right">大きさ</th><th>見つかった情報</th><th style="width: 170px">状態</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+              <tr style="background: {{ row.bg }}">
+                <td style="box-shadow: inset 3px 0 0 {{ row.mark }}"><button class="row-btn" aria-pressed="{{ row.selected }}" onClick="{{ row.pick }}">{{ row.name }}</button></td>
+                <td class="mono">{{ row.format }}</td>
+                <td class="mono" style="text-align: right; white-space: nowrap">{{ row.size }}</td>
+                <td>
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px">
+                    <sc-for list="{{ row.chips }}" as="c" hint-placeholder-count="3">
+                      <sc-if value="{{ c.loc }}" hint-placeholder-val="{{ false }}"><span class="chip chip-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg>{{ c.label }}</span></sc-if>
+                      <sc-if value="{{ c.plain }}" hint-placeholder-val="{{ true }}"><span class="chip">{{ c.label }}</span></sc-if>
+                    </sc-for>
+                    <sc-if value="{{ row.none }}" hint-placeholder-val="{{ false }}"><span class="hint">メタデータなし</span></sc-if>
+                  </div>
+                </td>
+                <td style="color: {{ row.color }}; font-weight: {{ row.weight }}">{{ row.status }}<sc-if value="{{ row.reason }}" hint-placeholder-val="{{ false }}"><div title="{{ row.reason }}" style="font-weight: 400; font-size: 12px; color: #5c5a56; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.reason }}</div></sc-if></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <aside aria-label="選んだファイルの詳細" style="flex: 1 1 300px; max-width: 340px; background: #ffffff; border-left: 1px solid #dcd9d3; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box">
+      <sc-if value="{{ noCur }}" hint-placeholder-val="{{ true }}">
+        <span class="hint" style="line-height: 1.7">写っているもの、PDF の本文、ファイル名は消せません</span>
+      </sc-if>
+      <sc-if value="{{ hasCur }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 15px; font-weight: 700; word-break: break-all">{{ cur.name }}</span>
+        <span class="mono">{{ cur.format }} · {{ cur.size }}</span>
+      </div>
+      <sc-if value="{{ cur.error }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size: 13px; color: #b3163a; font-weight: 500">✕ {{ cur.error }}</div>
+      </sc-if>
+      <sc-if value="{{ cur.empty }}" hint-placeholder-val="{{ false }}">
+        <span class="hint">メタデータは見つかりませんでした</span>
+      </sc-if>
+      <sc-for list="{{ cur.groups }}" as="g" hint-placeholder-count="3">
+        <section style="display: flex; flex-direction: column; gap: 4px">
+          <span class="label" style="color: {{ g.color }}">{{ g.title }}</span>
+          <dl style="margin: 0">
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="2">
+              <dt>{{ it.k }}</dt>
+              <dd class="{{ it.cls }}">{{ it.v }}</dd>
+            </sc-for>
+          </dl>
+        </section>
+      </sc-for>
+      <sc-if value="{{ cur.kept }}" hint-placeholder-val="{{ false }}">
+        <section style="display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid #ebe8e3">
+          <span class="label">残す情報</span>
+          <span class="hint" style="line-height: 1.7">{{ cur.kept }}</span>
+        </section>
+      </sc-if>
+      </sc-if>
+    </aside>
+  </div>
+
+  <footer style="min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #ffffff; border-top: 1px solid #dcd9d3; flex-wrap: wrap; box-sizing: border-box">
+    <span class="hint">5 件から情報を消して保存します</span>
+    <button class="btn btn-primary" style="margin-left: auto">消して保存</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const picked = this.state && this.state.picked != null ? this.state.picked : null;
+    const chip = (label, loc) => ({ label, loc: !!loc, plain: !loc });
+    const wait = { status: '待機', color: '#5c5a56', weight: 400, reason: '' };
+    const loc = (lat, lon) => ({ title: '位置情報', color: '#6b4100', items: [{ k: '緯度', v: lat, cls: 'mono' }, { k: '経度', v: lon, cls: 'mono' }] });
+    const files = [
+      { name: 'IMG_2041.jpg', format: 'JPEG', size: '3.2 MB', chips: [chip('位置情報', true), chip('日時'), chip('機器'), chip('サムネイル')], ...wait,
+        groups: [loc('12°34′56″ N', '65°43′21″ E'),
+          { title: '日時', items: [{ k: '撮影日時', v: '2026/01/02 03:04' }] },
+          { title: '機器', items: [{ k: 'カメラの機種', v: 'Example Cam X1' }, { k: 'シリアル番号', v: 'EX-000123', cls: 'mono' }] },
+          { title: '埋め込みのサムネイル', items: [{ k: '大きさ', v: '160 × 120 px' }] }],
+        kept: '向き（右に 90 度回転）、色のプロファイル（sRGB）' },
+      { name: 'IMG_2042.jpg', format: 'JPEG', size: '2.9 MB', chips: [chip('位置情報', true), chip('日時'), chip('機器')], ...wait,
+        groups: [loc('12°34′58″ N', '65°43′19″ E'),
+          { title: '日時', items: [{ k: '撮影日時', v: '2026/01/02 03:06' }] },
+          { title: '機器', items: [{ k: 'カメラの機種', v: 'Example Cam X1' }] }],
+        kept: '色のプロファイル（sRGB）' },
+      { name: 'screenshot-0812.png', format: 'PNG', size: '412 KB', chips: [chip('日時'), chip('ソフトウェア')], ...wait,
+        groups: [{ title: '日時', items: [{ k: '作成日時', v: '2026/08/12 14:20' }] },
+          { title: 'ソフトウェア', items: [{ k: '作成ソフト', v: 'Example Capture 2.1' }] }], kept: '' },
+      { name: 'banner.webp', format: 'WebP', size: '88 KB', chips: [], none: true, ...wait, groups: [], empty: true, kept: '' },
+      { name: '見積書-2026-10.pdf', format: 'PDF', size: '245 KB', chips: [chip('作成者'), chip('日時'), chip('ソフトウェア'), chip('過去の版')], ...wait,
+        groups: [{ title: '作成者', items: [{ k: '作成者', v: '[作成者の名前]' }] },
+          { title: '日時', items: [{ k: '作成日時', v: '2026/10/01 10:12' }, { k: '更新日時', v: '2026/10/03 17:45' }] },
+          { title: 'ソフトウェア', items: [{ k: '作成ソフト', v: 'Example Writer 7' }, { k: 'PDF 作成ソフト', v: 'Example PDF Library 3' }] },
+          { title: '過去の版', items: [{ k: '追記保存', v: '2 回分の以前の内容が残っています' }] }], kept: '' },
+      { name: '契約書-署名済み.pdf', format: 'PDF', size: '1.1 MB', chips: [], status: '✕ 読み込めません', color: '#b3163a', weight: 500, reason: '電子署名付きの PDF は扱えません',
+        groups: [], error: '電子署名付きの PDF は扱えません。消すと署名が無効になるためです', kept: '' }
+    ];
+    const rows = files.map((f, i) => ({ ...f, selected: i === picked ? 'true' : 'false', bg: i === picked ? '#e7f1f0' : '#ffffff', mark: i === picked ? '#0e6b66' : 'transparent', pick: () => this.setState({ picked: i === picked ? null : i }) }));
+    const cur = picked == null ? { name: '', format: '', size: '', groups: [], kept: '' } : files[picked];
+    return { rows, hasCur: picked != null, noCur: picked == null, cur: { ...cur, groups: cur.groups.map((g) => ({ color: '#1f1f1f', ...g, items: g.items.map((it) => ({ cls: '', ...it })) })) } };
+  }
+}
+</script>
+</body>
+</html>

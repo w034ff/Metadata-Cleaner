@@ -1,0 +1,38 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-09T09:00:00Z"
+  },
+  "title": "Metadata Cleaner 画面案",
+  "launch": {
+    "view": "focused",
+    "file": "BList.dc.html"
+  },
+  "pages": [],
+  "boards": {
+    "BList.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 800,
+      "expand": "fill",
+      "title": "追加したあと（行を選ぶと右に詳細）",
+      "is_interactive": true
+    },
+    "BResult.dc.html": {
+      "x": 1280,
+      "y": 0,
+      "w": 1200,
+      "h": 800,
+      "expand": "fill",
+      "title": "終わったあと"
+    }
+  },
+  "order": [
+    "BList.dc.html",
+    "BResult.dc.html"
+  ],
+  "notes": {},
+  "designSystems": []
+}
