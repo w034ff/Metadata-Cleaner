@@ -51,6 +51,7 @@ PDF Converter（https://github.com/w034ff/PDF-Converter）と同じ作りのと�
 - ライブラリは実装開始時点の最新安定版とし、`Cargo.lock` と `package-lock.json` をコミットして固定する。スパイクでは lopdf 0.45.0、kamadak-exif 0.6.1 を使った。
 - lopdf は `default-features = false` にする。既定の `chrono-clock` と `rayon` は使わない（日時を書かず、並列は §5.2 のプロセスで行うため）。
 - Tauri のプラグインは `tauri-plugin-dialog` だけを使い、Rust 側からだけ呼ぶ（§9）。
+- 表にない小さな依存: `crates/core` は、書き直した `eXIf` のチャンク（§4.3）の CRC に `crc32fast` を使う。フィクスチャの生成は、暗号化された PDF の鍵に `md-5`（dev-dependencies）を使う（§11.1、PDF Converter と同じ）。
 
 ## 3. ディレクトリ構成
 
