@@ -10,6 +10,9 @@ use mcleaner_core::report::{
 use metadata_cleaner_lib::commands::{AboutInfo, AddSource};
 use metadata_cleaner_lib::error::{ErrorCode, IpcError};
 use metadata_cleaner_lib::items::{AddResult, FileItem, ItemsDropped, Skipped};
+use metadata_cleaner_lib::jobs::{
+    JobFinishedPayload, JobItemPayload, JobItemStatus, JobProgressPayload,
+};
 use metadata_cleaner_lib::settings::{Language, OutputDirLabel, Settings, SettingsInput};
 use ts_rs::{Config, TS};
 
@@ -35,6 +38,10 @@ fn export_typescript_bindings() {
     Skipped::export_all(&cfg).expect("exporting Skipped");
     AddResult::export_all(&cfg).expect("exporting AddResult");
     ItemsDropped::export_all(&cfg).expect("exporting ItemsDropped");
+    JobItemStatus::export_all(&cfg).expect("exporting JobItemStatus");
+    JobProgressPayload::export_all(&cfg).expect("exporting JobProgressPayload");
+    JobItemPayload::export_all(&cfg).expect("exporting JobItemPayload");
+    JobFinishedPayload::export_all(&cfg).expect("exporting JobFinishedPayload");
     AboutInfo::export_all(&cfg).expect("exporting AboutInfo");
     Language::export_all(&cfg).expect("exporting Language");
     OutputDirLabel::export_all(&cfg).expect("exporting OutputDirLabel");

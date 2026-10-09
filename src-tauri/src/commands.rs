@@ -10,13 +10,14 @@ use mcleaner_worker::WORKER_FLAG;
 use mcleaner_worker::client::{INSPECT_TIMEOUT, WorkerError, WorkerProcess};
 use mcleaner_worker::protocol::{Request, Response};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use ts_rs::TS;
 
 use crate::AppState;
 use crate::error::{ErrorCode, IpcError};
 use crate::items::{self, AddResult};
+use crate::jobs;
 use crate::settings::{self, OutputDirLabel, Settings, SettingsInput};
 
 /// Answer of [`get_about`].
@@ -189,6 +190,38 @@ pub async fn get_details(state: tauri::State<'_, AppState>, id: u64) -> Result<D
     tauri::async_runtime::spawn_blocking(move || items::details(&state, id))
         .await
         .map_err(task_failed)?
+}
+
+/// Cancels the currently executing cleaning job (design §6.5, §7.1).
+#[tauri::command]
+pub fn cancel_job(state: tauri::State<'_, AppState>) {
+    state.cancel_flag.store(true, Ordering::SeqCst);
+}
+
+/// Starts batch cleaning of metadata in the background (design §6.3, §7.1).
+#[tauri::command]
+pub async fn start_clean(
+    window: tauri::Window,
+    state: tauri::State<'_, AppState>,
+    ids: Vec<u64>,
+) -> Result<(), IpcError> {
+    let w1 = window.clone();
+    let w2 = window.clone();
+    let w3 = window.clone();
+
+    let callbacks = jobs::JobCallbacks {
+        on_progress: move |p| {
+            let _ = w1.emit(jobs::JOB_PROGRESS_EVENT, &p);
+        },
+        on_item: move |item| {
+            let _ = w2.emit(jobs::JOB_ITEM_EVENT, &item);
+        },
+        on_finished: move |fin| {
+            let _ = w3.emit(jobs::JOB_FINISHED_EVENT, &fin);
+        },
+    };
+
+    jobs::start_clean_internal(&state, &ids, callbacks)
 }
 
 /// Opens a dialog to pick several files with one of `extensions`.
