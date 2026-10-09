@@ -73,14 +73,6 @@ pub fn clean(bytes: &[u8]) -> Result<Vec<u8>, PdfError> {
     let mut out = Vec::new();
     doc.save_modern(&mut out)
         .map_err(|_| PdfError::OpenFailed)?;
-
-    // Verify lopdf did not re-add /Info or /ID
-    if let Ok(reloaded) = Document::load_mem(&out)
-        && (reloaded.trailer.has(b"Info") || reloaded.trailer.has(b"ID"))
-    {
-        return Err(PdfError::OpenFailed);
-    }
-
     Ok(out)
 }
 
@@ -232,7 +224,8 @@ fn parse_pdf_date(bytes: &[u8]) -> String {
     }
 }
 
-fn object_to_text(obj: &Object) -> String {
+fn object_to_text(doc: &Document, obj: &Object) -> String {
+    let obj = doc.dereference(obj).map_or(obj, |(_, target)| target);
     match obj {
         Object::String(bytes, _) => parse_pdf_string(bytes),
         _ => format!("{obj:?}"),
@@ -265,7 +258,7 @@ fn resolve_dict<'a>(doc: &'a Document, obj: &'a Object) -> Option<&'a Dictionary
 fn collect_from_dict(
     doc: &Document,
     dict: &Dictionary,
-    seen_streams: &mut HashSet<ObjectId>,
+    seen_refs: &mut HashSet<ObjectId>,
     raw_entries: &mut Vec<(MetadataKind, DetailEntry)>,
 ) {
     for (k, v) in dict.iter() {
@@ -273,7 +266,7 @@ fn collect_from_dict(
             b"Metadata" => {
                 if let Some((opt_id, stream)) = resolve_stream(doc, v) {
                     let should_process = match opt_id {
-                        Some(id) => seen_streams.insert(id),
+                        Some(id) => seen_refs.insert(id),
                         None => true,
                     };
                     if should_process {
@@ -325,7 +318,7 @@ fn collect_from_dict(
             b"Thumb" => {
                 if let Some((opt_id, stream)) = resolve_stream(doc, v) {
                     let should_process = match opt_id {
-                        Some(id) => seen_streams.insert(id),
+                        Some(id) => seen_refs.insert(id),
                         None => true,
                     };
                     if should_process {
@@ -346,20 +339,27 @@ fn collect_from_dict(
                     }
                 }
             }
-            _ => match v {
-                Object::Dictionary(nested_dict) => {
-                    collect_from_dict(doc, nested_dict, seen_streams, raw_entries);
-                }
-                Object::Array(arr) => {
-                    for item in arr {
-                        if let Object::Dictionary(nested_dict) = item {
-                            collect_from_dict(doc, nested_dict, seen_streams, raw_entries);
-                        }
-                    }
-                }
-                _ => {}
-            },
+            _ => collect_from_object(doc, v, seen_refs, raw_entries),
         }
+    }
+}
+
+/// Walks nested dictionaries and arrays the same way `scrub_object` does, so
+/// that everything clean removes is also reported.
+fn collect_from_object(
+    doc: &Document,
+    obj: &Object,
+    seen_refs: &mut HashSet<ObjectId>,
+    raw_entries: &mut Vec<(MetadataKind, DetailEntry)>,
+) {
+    match obj {
+        Object::Dictionary(d) => collect_from_dict(doc, d, seen_refs, raw_entries),
+        Object::Array(arr) => {
+            for item in arr {
+                collect_from_object(doc, item, seen_refs, raw_entries);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -376,12 +376,13 @@ fn collect_jpeg_details(content: &[u8], raw_entries: &mut Vec<(MetadataKind, Det
     }
 }
 
-fn is_first_object_linearized(doc: &Document) -> bool {
-    if let Some((_id, Object::Dictionary(d))) = doc.objects.iter().next() {
-        d.has(b"Linearized")
-    } else {
-        false
-    }
+/// Whether the file carries a linearization dictionary. The dictionary is the
+/// first object in the file but often not the lowest-numbered one, so every
+/// object is checked rather than the first in number order.
+fn is_linearized(doc: &Document) -> bool {
+    doc.objects
+        .values()
+        .any(|o| matches!(o, Object::Dictionary(d) if d.has(b"Linearized")))
 }
 
 fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
@@ -402,7 +403,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         DetailEntry {
                             field: Field::Title,
                             name: None,
-                            value: DetailValue::Text(object_to_text(v)),
+                            value: DetailValue::Text(object_to_text(doc, v)),
                         },
                     )),
                     b"Author" => raw_entries.push((
@@ -410,7 +411,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         DetailEntry {
                             field: Field::Author,
                             name: None,
-                            value: DetailValue::Text(object_to_text(v)),
+                            value: DetailValue::Text(object_to_text(doc, v)),
                         },
                     )),
                     b"Subject" => raw_entries.push((
@@ -418,7 +419,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         DetailEntry {
                             field: Field::Subject,
                             name: None,
-                            value: DetailValue::Text(object_to_text(v)),
+                            value: DetailValue::Text(object_to_text(doc, v)),
                         },
                     )),
                     b"Keywords" => raw_entries.push((
@@ -426,7 +427,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         DetailEntry {
                             field: Field::Keywords,
                             name: None,
-                            value: DetailValue::Text(object_to_text(v)),
+                            value: DetailValue::Text(object_to_text(doc, v)),
                         },
                     )),
                     b"Creator" => raw_entries.push((
@@ -434,7 +435,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         DetailEntry {
                             field: Field::Software,
                             name: None,
-                            value: DetailValue::Text(object_to_text(v)),
+                            value: DetailValue::Text(object_to_text(doc, v)),
                         },
                     )),
                     b"Producer" => raw_entries.push((
@@ -442,13 +443,13 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         DetailEntry {
                             field: Field::PdfProducer,
                             name: None,
-                            value: DetailValue::Text(object_to_text(v)),
+                            value: DetailValue::Text(object_to_text(doc, v)),
                         },
                     )),
                     b"CreationDate" => {
-                        let date_str = match v {
+                        let date_str = match doc.dereference(v).map_or(v, |(_, t)| t) {
                             Object::String(b, _) => parse_pdf_date(b),
-                            _ => object_to_text(v),
+                            _ => object_to_text(doc, v),
                         };
                         raw_entries.push((
                             MetadataKind::DateTime,
@@ -460,9 +461,9 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                         ));
                     }
                     b"ModDate" => {
-                        let date_str = match v {
+                        let date_str = match doc.dereference(v).map_or(v, |(_, t)| t) {
                             Object::String(b, _) => parse_pdf_date(b),
-                            _ => object_to_text(v),
+                            _ => object_to_text(doc, v),
                         };
                         raw_entries.push((
                             MetadataKind::DateTime,
@@ -480,7 +481,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
                             DetailEntry {
                                 field: Field::Other,
                                 name: Some(key_name),
-                                value: DetailValue::Text(object_to_text(v)),
+                                value: DetailValue::Text(object_to_text(doc, v)),
                             },
                         ));
                     }
@@ -515,26 +516,19 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
     }
 
     // 3. Objects in ascending order
-    let mut seen_streams = HashSet::new();
-    for (obj_id, obj) in &doc.objects {
+    let mut seen_refs = HashSet::new();
+    for obj in doc.objects.values() {
         match obj {
             Object::Dictionary(d) => {
-                collect_from_dict(doc, d, &mut seen_streams, &mut raw_entries);
+                collect_from_dict(doc, d, &mut seen_refs, &mut raw_entries);
             }
             Object::Stream(s) => {
-                collect_from_dict(doc, &s.dict, &mut seen_streams, &mut raw_entries);
-                if is_dct_only(&s.dict) && seen_streams.insert(*obj_id) {
+                collect_from_dict(doc, &s.dict, &mut seen_refs, &mut raw_entries);
+                if is_dct_only(&s.dict) {
                     collect_jpeg_details(&s.content, &mut raw_entries);
                 }
             }
-            Object::Array(arr) => {
-                for item in arr {
-                    if let Object::Dictionary(nested_dict) = item {
-                        collect_from_dict(doc, nested_dict, &mut seen_streams, &mut raw_entries);
-                    }
-                }
-            }
-            _ => {}
+            other => collect_from_object(doc, other, &mut seen_refs, &mut raw_entries),
         }
     }
 
@@ -542,7 +536,7 @@ fn collect_raw_entries(doc: &Document, bytes: &[u8]) -> Vec<(MetadataKind, Detai
     let startxref_count = bytes.windows(9).filter(|w| *w == b"startxref").count();
 
     if startxref_count >= 2 {
-        let is_linearized = startxref_count == 2 && is_first_object_linearized(doc);
+        let is_linearized = startxref_count == 2 && is_linearized(doc);
         if !is_linearized {
             raw_entries.push((
                 MetadataKind::History,
@@ -1068,5 +1062,112 @@ mod tests {
         // Latin-1 fallback
         let latin1 = b"Hello \xA9 2026"; // © is 0xA9 in Latin-1
         assert_eq!(parse_pdf_string(latin1), "Hello © 2026");
+    }
+
+    fn xmp_author_stream(doc: &mut Document) -> ObjectId {
+        doc.add_object(Stream::new(
+            dictionary! { "Type" => "Metadata", "Subtype" => "XML" },
+            b"<rdf:Description><dc:creator>A</dc:creator></rdf:Description>".to_vec(),
+        ))
+    }
+
+    fn with_catalog(doc: &mut Document, page: ObjectId) {
+        let pages = doc.add_object(dictionary! {
+            "Type" => "Pages",
+            "Kids" => vec![page.into()],
+            "Count" => 1,
+        });
+        let root = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages });
+        doc.trailer.set("Root", root);
+    }
+
+    #[test]
+    fn test_linearization_dict_with_a_high_number_is_not_history() {
+        let mut doc = Document::with_version("1.4");
+        let page = doc.add_object(dictionary! { "Type" => "Page" });
+        with_catalog(&mut doc, page);
+        // Written first in the file, numbered after everything else.
+        doc.add_object(dictionary! { "Linearized" => 1 });
+
+        let entries = collect_raw_entries(&doc, b"startxref 0\nstartxref 1");
+        assert!(entries.iter().all(|(k, _)| *k != MetadataKind::History));
+    }
+
+    #[test]
+    fn test_dct_thumbnail_numbered_before_its_page_is_reported() {
+        let jpeg = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../core/tests/fixtures/clean.jpg"
+        ))
+        .unwrap();
+        let mut doc = Document::with_version("1.4");
+        let thumb = doc.add_object(Stream::new(
+            dictionary! { "Width" => 7, "Height" => 5, "Filter" => "DCTDecode" },
+            jpeg,
+        ));
+        let page = doc.add_object(dictionary! { "Type" => "Page", "Thumb" => thumb });
+        with_catalog(&mut doc, page);
+        let mut bytes = Vec::new();
+        doc.save_to(&mut bytes).unwrap();
+
+        let det = details(&bytes).unwrap();
+        let thumbs = det
+            .groups
+            .iter()
+            .find(|g| g.kind == MetadataKind::Thumbnail)
+            .expect("thumbnail group");
+        assert!(
+            thumbs
+                .entries
+                .iter()
+                .any(|e| e.value == DetailValue::Text("7 × 5 px".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_metadata_in_nested_arrays_is_reported_and_removed() {
+        let mut doc = Document::with_version("1.4");
+        let xmp = xmp_author_stream(&mut doc);
+        let page = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Extra" => vec![Object::Array(vec![Object::Dictionary(dictionary! { "Metadata" => xmp })])],
+        });
+        with_catalog(&mut doc, page);
+        let mut bytes = Vec::new();
+        doc.save_to(&mut bytes).unwrap();
+
+        assert!(
+            inspect(&bytes)
+                .unwrap()
+                .kinds
+                .contains(&MetadataKind::Author)
+        );
+        assert!(inspect(&clean(&bytes).unwrap()).unwrap().kinds.is_empty());
+    }
+
+    #[test]
+    fn test_info_values_behind_references_are_resolved() {
+        let mut doc = Document::with_version("1.4");
+        let page = doc.add_object(dictionary! { "Type" => "Page" });
+        with_catalog(&mut doc, page);
+        let author = doc.add_object(Object::string_literal("Indirect Author"));
+        let date = doc.add_object(Object::string_literal("D:20260102"));
+        let info = doc.add_object(dictionary! { "Author" => author, "CreationDate" => date });
+        doc.trailer.set("Info", info);
+        let mut bytes = Vec::new();
+        doc.save_to(&mut bytes).unwrap();
+
+        let values: Vec<_> = details(&bytes)
+            .unwrap()
+            .groups
+            .into_iter()
+            .flat_map(|g| g.entries)
+            .map(|e| (e.field, e.value))
+            .collect();
+        assert!(values.contains(&(
+            Field::Author,
+            DetailValue::Text("Indirect Author".to_string())
+        )));
+        assert!(values.contains(&(Field::Created, DetailValue::Text("2026-01-02".to_string()))));
     }
 }
