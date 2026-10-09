@@ -2,8 +2,13 @@
 //! (design §5).
 
 use std::io::{self, BufReader, BufWriter};
+use std::path::Path;
+
+use mcleaner_core::detect::MAX_PDF_FILE_BYTES;
+use mcleaner_core::error::CoreError;
 
 use crate::VERSION;
+use crate::pdf;
 use crate::protocol::{Request, Response, read_message, write_message};
 
 /// How much memory one worker may use (design §5.3). Allocations beyond it
@@ -28,6 +33,55 @@ pub fn run() -> io::Result<()> {
     Ok(())
 }
 
+enum ReadFileError {
+    ReadFailed,
+    TooLarge(String),
+}
+
+impl From<ReadFileError> for Response {
+    fn from(err: ReadFileError) -> Self {
+        match err {
+            ReadFileError::ReadFailed => Self::Error {
+                code: "ReadFailed".into(),
+                detail: None,
+            },
+            ReadFileError::TooLarge(detail) => Self::Error {
+                code: "TooLarge".into(),
+                detail: Some(detail),
+            },
+        }
+    }
+}
+
+fn read_pdf_file(path: &Path) -> Result<Vec<u8>, ReadFileError> {
+    let metadata = match std::fs::metadata(path) {
+        Ok(m) => m,
+        Err(_) => return Err(ReadFileError::ReadFailed),
+    };
+    if metadata.len() > MAX_PDF_FILE_BYTES {
+        let detail = CoreError::TooLarge {
+            limit_bytes: MAX_PDF_FILE_BYTES,
+        }
+        .detail()
+        .unwrap_or_default();
+        return Err(ReadFileError::TooLarge(detail));
+    }
+    match std::fs::read(path) {
+        Ok(bytes) => {
+            if bytes.len() as u64 > MAX_PDF_FILE_BYTES {
+                let detail = CoreError::TooLarge {
+                    limit_bytes: MAX_PDF_FILE_BYTES,
+                }
+                .detail()
+                .unwrap_or_default();
+                return Err(ReadFileError::TooLarge(detail));
+            }
+            Ok(bytes)
+        }
+        Err(_) => Err(ReadFileError::ReadFailed),
+    }
+}
+
 fn handle(request: Request) -> (Response, Vec<u8>) {
     match request {
         Request::Ping => (
@@ -36,6 +90,91 @@ fn handle(request: Request) -> (Response, Vec<u8>) {
             },
             Vec::new(),
         ),
+        Request::Inspect { path, details } => {
+            let bytes = match read_pdf_file(&path) {
+                Ok(b) => b,
+                Err(err) => return (Response::from(err), Vec::new()),
+            };
+            let inspection = match pdf::inspect(&bytes) {
+                Ok(insp) => insp,
+                Err(e) => {
+                    return (
+                        Response::Error {
+                            code: e.code().into(),
+                            detail: None,
+                        },
+                        Vec::new(),
+                    );
+                }
+            };
+            let details = if details {
+                match pdf::details(&bytes) {
+                    Ok(d) => Some(d),
+                    Err(e) => {
+                        return (
+                            Response::Error {
+                                code: e.code().into(),
+                                detail: None,
+                            },
+                            Vec::new(),
+                        );
+                    }
+                }
+            } else {
+                None
+            };
+            (
+                Response::Inspected {
+                    inspection,
+                    details,
+                },
+                Vec::new(),
+            )
+        }
+        Request::Clean { path } => {
+            let bytes = match read_pdf_file(&path) {
+                Ok(b) => b,
+                Err(err) => return (Response::from(err), Vec::new()),
+            };
+            let inspection = match pdf::inspect(&bytes) {
+                Ok(insp) => insp,
+                Err(e) => {
+                    return (
+                        Response::Error {
+                            code: e.code().into(),
+                            detail: None,
+                        },
+                        Vec::new(),
+                    );
+                }
+            };
+            let removed = inspection.kinds;
+            let cleaned_bytes = match pdf::clean(&bytes) {
+                Ok(c) => c,
+                Err(e) => {
+                    return (
+                        Response::Error {
+                            code: e.code().into(),
+                            detail: None,
+                        },
+                        Vec::new(),
+                    );
+                }
+            };
+            match pdf::inspect(&cleaned_bytes) {
+                Ok(re_insp) if re_insp.kinds.is_empty() => {}
+                _ => {
+                    return (
+                        Response::Error {
+                            code: "VerifyFailed".into(),
+                            detail: None,
+                        },
+                        Vec::new(),
+                    );
+                }
+            }
+            (Response::Cleaned { removed }, cleaned_bytes)
+        }
         #[cfg(feature = "test-hooks")]
         Request::AllocateForTest { mebibytes } => {
             const MIB: usize = 1024 * 1024;

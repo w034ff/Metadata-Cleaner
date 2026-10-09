@@ -5,7 +5,9 @@
 //! raw bytes instead of base64.
 
 use std::io::{self, Read, Write};
+use std::path::PathBuf;
 
+use mcleaner_core::report::{Details, Inspection, MetadataKind};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 /// Upper bound on a header, so a corrupt length cannot make the reader
@@ -27,6 +29,10 @@ pub const MAX_BODY_BYTES: u64 = 1024 * 1024 * 1024;
 pub enum Request {
     /// Asks the worker for its version, to show that it started.
     Ping,
+    /// Inspects a PDF file at the given path, optionally extracting detailed entries.
+    Inspect { path: PathBuf, details: bool },
+    /// Cleans a PDF file at the given path, stripping metadata.
+    Clean { path: PathBuf },
     /// Allocates and touches this much memory, to test the memory limit.
     #[cfg(feature = "test-hooks")]
     AllocateForTest { mebibytes: u64 },
@@ -39,7 +45,7 @@ pub enum Request {
 }
 
 /// A response from the worker.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -48,6 +54,13 @@ pub enum Request {
 pub enum Response {
     /// The answer to [`Request::Ping`].
     Pong { version: String },
+    /// The answer to [`Request::Inspect`].
+    Inspected {
+        inspection: Inspection,
+        details: Option<Details>,
+    },
+    /// The answer to [`Request::Clean`]. The cleaned PDF bytes are in the body.
+    Cleaned { removed: Vec<MetadataKind> },
     /// The request failed; `code` is one of the error codes of design §6.6.
     Error {
         code: String,
@@ -216,6 +229,82 @@ mod tests {
             serde_json::to_string(&pong).unwrap(),
             r#"{"type":"pong","version":"0.1.0"}"#
         );
+    }
+
+    #[test]
+    fn round_trips_inspected_and_cleaned_responses() {
+        use mcleaner_core::detect::Format;
+        use mcleaner_core::report::{DetailEntry, DetailGroup, DetailValue, Field, KeptInfo};
+
+        let inspected = Response::Inspected {
+            inspection: Inspection {
+                format: Format::Pdf,
+                kinds: vec![MetadataKind::Location, MetadataKind::Author],
+                kept: vec![KeptInfo::Orientation { value: 6 }],
+            },
+            details: Some(Details {
+                groups: vec![DetailGroup {
+                    kind: MetadataKind::Author,
+                    entries: vec![DetailEntry {
+                        field: Field::Author,
+                        name: None,
+                        value: DetailValue::Text("Alice".into()),
+                    }],
+                }],
+                kept: vec![KeptInfo::Orientation { value: 6 }],
+                truncated: false,
+            }),
+        };
+        let mut buffer = Vec::new();
+        write_message(&mut buffer, &inspected, &[]).unwrap();
+        let (read_resp, body): (Response, Vec<u8>) =
+            read_message(&mut buffer.as_slice()).unwrap().unwrap();
+        assert_eq!(read_resp, inspected);
+        assert!(body.is_empty());
+
+        let cleaned = Response::Cleaned {
+            removed: vec![MetadataKind::Location, MetadataKind::Author],
+        };
+        let mut clean_buf = Vec::new();
+        let fake_pdf = b"%PDF-1.4 cleaned content";
+        write_message(&mut clean_buf, &cleaned, fake_pdf).unwrap();
+        let (read_clean, clean_body): (Response, Vec<u8>) =
+            read_message(&mut clean_buf.as_slice()).unwrap().unwrap();
+        assert_eq!(read_clean, cleaned);
+        assert_eq!(clean_body, fake_pdf);
+    }
+
+    #[test]
+    fn serializes_inspection_with_format_and_kinds() {
+        use mcleaner_core::detect::Format;
+        use mcleaner_core::report::KeptInfo;
+
+        let inspection = Inspection {
+            format: Format::Pdf,
+            kinds: vec![MetadataKind::Location, MetadataKind::DateTime],
+            kept: vec![KeptInfo::Orientation { value: 6 }],
+        };
+        let json = serde_json::to_string(&inspection).unwrap();
+        assert!(json.contains(r#""format":"pdf""#));
+        assert!(json.contains(r#""kinds":["location","dateTime"]"#));
+        assert!(json.contains(r#"{"type":"orientation","value":6}"#));
+    }
+
+    #[test]
+    fn serializes_detail_value_as_tagged_object() {
+        use mcleaner_core::report::DetailValue;
+
+        let text_val = DetailValue::Text("Sample text".into());
+        let json = serde_json::to_string(&text_val).unwrap();
+        assert_eq!(json, r#"{"type":"text","value":"Sample text"}"#);
+
+        let bytes_val = DetailValue::Bytes(1024);
+        let json = serde_json::to_string(&bytes_val).unwrap();
+        assert_eq!(json, r#"{"type":"bytes","value":1024}"#);
+
+        let count_val = DetailValue::Count(3);
+        let json = serde_json::to_string(&count_val).unwrap();
+        assert_eq!(json, r#"{"type":"count","value":3}"#);
     }
 
     #[cfg(not(feature = "test-hooks"))]

@@ -1,9 +1,12 @@
 //! Report data structures and detail types for inspected images (design §4.5, §4.7).
 
+use serde::{Deserialize, Serialize};
+
 use crate::detect::Format;
 
 /// Categories for found metadata, ordered as specified in design §4.5.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum MetadataKind {
     Location,
     DateTime,
@@ -17,7 +20,8 @@ pub enum MetadataKind {
 }
 
 /// Specific metadata field keys.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Field {
     Latitude,
     Longitude,
@@ -47,7 +51,8 @@ pub enum Field {
 }
 
 /// Representation of a metadata detail value.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum DetailValue {
     Text(String),
     Bytes(u64),
@@ -55,7 +60,8 @@ pub enum DetailValue {
 }
 
 /// A single metadata entry.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DetailEntry {
     pub field: Field,
     pub name: Option<String>,
@@ -63,14 +69,16 @@ pub struct DetailEntry {
 }
 
 /// A group of detail entries sharing a metadata category.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DetailGroup {
     pub kind: MetadataKind,
     pub entries: Vec<DetailEntry>,
 }
 
 /// Units for kept resolution information.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ResolutionUnit {
     Inch,
     Centimeter,
@@ -78,9 +86,16 @@ pub enum ResolutionUnit {
 }
 
 /// Information preserved from the original file when cleaning.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum KeptInfo {
-    Orientation(u8),
+    Orientation {
+        value: u8,
+    },
     ColorProfile {
         description: Option<String>,
     },
@@ -92,7 +107,8 @@ pub enum KeptInfo {
 }
 
 /// Quick inspection result (design §4.7).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Inspection {
     pub format: Format,
     pub kinds: Vec<MetadataKind>,
@@ -100,7 +116,8 @@ pub struct Inspection {
 }
 
 /// Detailed metadata inspection result (design §4.7).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Details {
     pub groups: Vec<DetailGroup>,
     pub kept: Vec<KeptInfo>,
@@ -186,8 +203,8 @@ pub fn sort_kept(kept: Vec<KeptInfo>) -> Vec<KeptInfo> {
 
     for item in kept {
         match item {
-            KeptInfo::Orientation(o) if orientation.is_none() => {
-                orientation = Some(KeptInfo::Orientation(o))
+            KeptInfo::Orientation { value } if orientation.is_none() => {
+                orientation = Some(KeptInfo::Orientation { value })
             }
             KeptInfo::ColorProfile { description } if color_profile.is_none() => {
                 color_profile = Some(KeptInfo::ColorProfile { description });
@@ -261,7 +278,7 @@ mod tests {
                 y: 300,
                 unit: ResolutionUnit::Inch,
             },
-            KeptInfo::Orientation(6),
+            KeptInfo::Orientation { value: 6 },
             KeptInfo::ColorProfile {
                 description: Some("sRGB".to_string()),
             },
@@ -271,7 +288,7 @@ mod tests {
         assert_eq!(
             sorted,
             vec![
-                KeptInfo::Orientation(6),
+                KeptInfo::Orientation { value: 6 },
                 KeptInfo::ColorProfile {
                     description: Some("sRGB".to_string())
                 },

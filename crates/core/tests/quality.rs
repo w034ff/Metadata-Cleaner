@@ -89,11 +89,11 @@ fn test_image_fixtures_quality() {
         let orig_orient = orig_insp
             .kept
             .iter()
-            .find(|k| matches!(k, KeptInfo::Orientation(_)));
+            .find(|k| matches!(k, KeptInfo::Orientation { .. }));
         let clean_orient = clean_insp
             .kept
             .iter()
-            .find(|k| matches!(k, KeptInfo::Orientation(_)));
+            .find(|k| matches!(k, KeptInfo::Orientation { .. }));
         assert_eq!(
             orig_orient, clean_orient,
             "kept orientation mismatch for fixture {name}"
