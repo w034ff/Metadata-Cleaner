@@ -31,7 +31,7 @@ describe("JobSummaryBanner", () => {
 
     const banner = screen.getByRole("status");
     expect(banner).toHaveClass("job-summary-banner-success");
-    expect(banner).toHaveTextContent("終わりました：成功 4 件");
+    expect(banner).toHaveTextContent("保存 4 件");
     expect(banner).toHaveTextContent("✓");
   });
 
@@ -51,9 +51,7 @@ describe("JobSummaryBanner", () => {
 
     const banner = screen.getByRole("status");
     expect(banner).toHaveClass("job-summary-banner-warning");
-    expect(banner).toHaveTextContent(
-      "終わりました：成功 4 件 · 失敗 1 件 · 未処理 1 件",
-    );
+    expect(banner).toHaveTextContent("保存 4 件 · 失敗 1 件 · 未処理 1 件");
     expect(banner).toHaveTextContent("✕");
   });
 
@@ -86,8 +84,6 @@ describe("JobSummaryBanner", () => {
     );
 
     const banner = screen.getByRole("status");
-    expect(banner).toHaveTextContent(
-      "終わりました：成功 4 件 · 失敗 1 件 · 読み込めない 1 件",
-    );
+    expect(banner).toHaveTextContent("保存 4 件 · 失敗 1 件 · 対象外 1 件");
   });
 });

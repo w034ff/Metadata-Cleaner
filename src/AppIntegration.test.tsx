@@ -484,8 +484,8 @@ describe("T12 Completion Criteria Integration Tests", () => {
     // ok item: ✓ 完了
     expect(screen.getByText("✓ 完了")).toBeInTheDocument();
 
-    // inspection error item: ✕ 読み込めません
-    expect(screen.getByText("✕ 読み込めません")).toBeInTheDocument();
+    // inspection error item: ✕ 対象外
+    expect(screen.getByText("✕ 対象外")).toBeInTheDocument();
 
     // job failed item: ✕ 失敗
     expect(screen.getByText("✕ 失敗")).toBeInTheDocument();

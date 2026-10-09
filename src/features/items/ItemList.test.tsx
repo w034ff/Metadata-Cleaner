@@ -178,7 +178,7 @@ describe("ItemList", () => {
     // Item 1: ok
     expect(screen.getByText("✓ 完了")).toBeInTheDocument();
     // Item 2: load failed
-    expect(screen.getByText("✕ 読み込めません")).toBeInTheDocument();
+    expect(screen.getByText("✕ 対象外")).toBeInTheDocument();
     expect(
       screen.getByText("電子署名付きの PDF は扱えません"),
     ).toBeInTheDocument();

@@ -18,7 +18,7 @@ export function isJobSuccessful(
 
 /**
  * Formats the summary string of a finished job (design §7.2, mockup BResult.dc.html).
- * E.g. "終わりました：成功 4 件 · 失敗 1 件 · 読み込めない 1 件"
+ * E.g. "保存 4 件 · 失敗 1 件 · 対象外 1 件"
  */
 export function formatJobSummary(
   finished: JobFinishedPayload,

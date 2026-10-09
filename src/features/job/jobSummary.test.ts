@@ -45,7 +45,7 @@ describe("jobSummary", () => {
       { succeeded: 4, failed: 1, unprocessed: 1, cancelled: false },
       "ja",
     );
-    expect(summary).toBe("終わりました：成功 4 件 · 失敗 1 件 · 未処理 1 件");
+    expect(summary).toBe("保存 4 件 · 失敗 1 件 · 未処理 1 件");
   });
 
   it("formats cancelled summary in Japanese", () => {
@@ -53,7 +53,7 @@ describe("jobSummary", () => {
       { succeeded: 2, failed: 0, unprocessed: 3, cancelled: true },
       "ja",
     );
-    expect(summary).toBe("キャンセルしました：成功 2 件 · 未処理 3 件");
+    expect(summary).toBe("キャンセルしました · 保存 2 件 · 未処理 3 件");
   });
 
   it("formats summary in English", () => {
@@ -61,7 +61,7 @@ describe("jobSummary", () => {
       { succeeded: 4, failed: 1, unprocessed: 0, cancelled: false },
       "en",
     );
-    expect(summary).toBe("Finished: 4 succeeded · 1 failed");
+    expect(summary).toBe("4 saved · 1 failed");
   });
 
   it("includes unreadable count when greater than zero", () => {
@@ -70,18 +70,14 @@ describe("jobSummary", () => {
       "ja",
       1,
     );
-    expect(jaSummary).toBe(
-      "終わりました：成功 4 件 · 失敗 1 件 · 読み込めない 1 件",
-    );
+    expect(jaSummary).toBe("保存 4 件 · 失敗 1 件 · 対象外 1 件");
 
     const enSummary = formatJobSummary(
       { succeeded: 4, failed: 1, unprocessed: 0, cancelled: false },
       "en",
       1,
     );
-    expect(enSummary).toBe(
-      "Finished: 4 succeeded · 1 failed · 1 could not be read",
-    );
+    expect(enSummary).toBe("4 saved · 1 failed · 1 excluded");
   });
 
   it("omits unreadable count when zero", () => {
@@ -90,8 +86,8 @@ describe("jobSummary", () => {
       "ja",
       0,
     );
-    expect(summary).toBe("終わりました：成功 4 件");
-    expect(summary).not.toContain("読み込めない");
+    expect(summary).toBe("保存 4 件");
+    expect(summary).not.toContain("対象外");
   });
 
   it("considers job unsuccessful when unreadableCount > 0", () => {
