@@ -259,9 +259,14 @@ fn inspect_file(
             );
         }
     };
-    let mut head = [0u8; DETECT_HEAD_BYTES];
-    let n = match file.read(&mut head) {
-        Ok(n) => n,
+    // A single read may return fewer bytes than asked for; read_to_end through
+    // take() fills the head unless the file is shorter.
+    let mut head = Vec::with_capacity(DETECT_HEAD_BYTES);
+    match (&mut file)
+        .take(DETECT_HEAD_BYTES as u64)
+        .read_to_end(&mut head)
+    {
+        Ok(_) => {}
         Err(_) => {
             return (
                 None,
@@ -271,7 +276,7 @@ fn inspect_file(
             );
         }
     };
-    let format = match detect::detect(&head[..n]) {
+    let format = match detect::detect(&head) {
         Ok(f) => f,
         Err(e) => return (None, bytes, Vec::new(), Some(IpcError::from(e))),
     };
