@@ -89,3 +89,26 @@ jobs:
       # pass its own tests without them.
       - name: Rust Test Without Test Hooks
         run: cargo test -p mcleaner-worker --lib --locked
+
+      # Both checks pin their target platforms (deny.toml, about.toml), so the
+      # result does not depend on the runner OS and one runner is enough.
+      - name: Install license tools
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@0.20.2,cargo-about@0.9.2
+
+      - name: License Check
+        if: runner.os == 'Linux'
+        run: npm run licenses:check
+
+      - name: Check third-party license list is current
+        if: runner.os == 'Linux'
+        run: |
+          npm run licenses:generate
+          status=$(git status --porcelain src/licenses)
+          if [ -n "$status" ]; then
+            echo "src/licenses/third-party-licenses.json is out of date. Run npm run licenses:generate and commit the result."
+            echo "$status"
+            exit 1
+          fi
