@@ -168,7 +168,9 @@ pub struct SettingsStore {
 
 impl SettingsStore {
     fn lock(&self) -> std::sync::MutexGuard<'_, Stored> {
-        self.inner.lock().expect("settings lock")
+        self.inner
+            .lock()
+            .expect("the settings are never locked across a panic")
     }
 
     /// A copy of what is held now.
@@ -236,7 +238,10 @@ fn write(config_dir: Option<&Path>, file: &SettingsFile) -> Result<(), IpcError>
 /// is shared (design §6.7).
 pub fn restore_settings(state: &AppState, config_dir: &Path) {
     let file = load_settings(config_dir);
-    *state.output_dir.lock().expect("output_dir lock") = file.output_dir.clone();
+    *state
+        .output_dir
+        .lock()
+        .expect("the output folder is never locked across a panic") = file.output_dir.clone();
     state.settings.restore(config_dir.to_path_buf(), file);
 }
 
@@ -251,7 +256,7 @@ pub fn dir_label(dir: &Path) -> String {
 
 fn label_of(slot: &Mutex<Option<PathBuf>>) -> Option<OutputDirLabel> {
     slot.lock()
-        .expect("output_dir lock")
+        .expect("the output folder is never locked across a panic")
         .as_deref()
         .map(|dir| OutputDirLabel {
             dir_label: dir_label(dir),
@@ -288,7 +293,10 @@ pub fn apply_picked_dir(
         dir_label: dir_label(&dir),
     };
     let persisted = state.settings.record_output_dir(&dir);
-    *state.output_dir.lock().expect("output_dir lock") = Some(dir);
+    *state
+        .output_dir
+        .lock()
+        .expect("the output folder is never locked across a panic") = Some(dir);
     Ok((label, persisted))
 }
 
@@ -306,6 +314,9 @@ pub fn clear_output_dir(state: &AppState) -> Result<(), IpcError> {
         return Err(IpcError::from_code(ErrorCode::JobRunning));
     }
     let persisted = state.settings.clear_output_dir();
-    *state.output_dir.lock().expect("output_dir lock") = None;
+    *state
+        .output_dir
+        .lock()
+        .expect("the output folder is never locked across a panic") = None;
     persisted
 }
