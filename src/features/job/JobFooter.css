@@ -1,0 +1,26 @@
+.job-footer {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+.job-footer-progress {
+  flex: 1;
+  min-width: 200px;
+}
+
+.job-footer-action {
+  margin-left: auto;
+}
+
+.job-footer-status-error {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-error);
+}

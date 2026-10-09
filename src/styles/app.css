@@ -1,0 +1,298 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-bg-app);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* An error said in a line of text (a field, the footer): red with a cross,
+   the same everywhere (design §10.3). Errors of an action the user took on
+   the list use ErrorDisplay instead. */
+.error-text {
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+.error-text::before {
+  content: "✕ " / "";
+}
+
+.success-text {
+  font-size: 12px;
+  color: var(--color-success);
+}
+
+.success-text::before {
+  content: "✓ " / "";
+}
+
+/* Chips for found metadata */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--color-chip-bg);
+  color: var(--color-chip-text);
+  white-space: nowrap;
+}
+
+.chip-loc {
+  background: var(--color-location-bg);
+  color: var(--color-location-text);
+  font-weight: 500;
+}
+
+/* Button styles */
+.btn {
+  font: inherit;
+  font-size: 13px;
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  min-height: 36px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  border-color: var(--color-accent);
+  font-weight: 500;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.btn-ghost {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-subtle);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-bg-subtle);
+}
+
+.row-btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.icon-btn {
+  font: inherit;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--color-bg-subtle);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Segmented control (.seg) */
+.seg {
+  display: flex;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.seg button {
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  min-height: 32px;
+  border: 0;
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: 0 12px;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-weight: 500;
+}
+
+.seg button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Layout classes */
+.app-container {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-app);
+  color: var(--color-text-primary);
+}
+
+.app-header {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+}
+
+.app-title-icon {
+  stroke: var(--color-accent);
+}
+
+.app-header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.lang-select {
+  font: inherit;
+  font-size: 13px;
+  min-height: 32px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0 8px;
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 999 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+
+.app-aside {
+  flex: 1 1 300px;
+  max-width: 340px;
+  min-width: 300px;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.app-footer {
+  min-height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.app-footer-action {
+  margin-left: auto;
+}
+
+.app-footer-progress {
+  flex: 1;
+  max-width: 480px;
+}

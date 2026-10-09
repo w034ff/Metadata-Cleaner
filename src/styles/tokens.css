@@ -1,0 +1,92 @@
+:root {
+  /* Native parts (scrollbars, form controls) follow the same theme. */
+  color-scheme: light dark;
+
+  /* Light theme colors (design §10.3, mockup BList.dc.html) */
+  --color-bg-app: #f4f3f0;
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #faf9f7;
+  --color-bg-muted: #f4f3f0;
+
+  --color-text-primary: #1f1f1f;
+  --color-text-secondary: #5c5a56;
+  --color-text-muted: #8a867e;
+  --color-text-on-accent: #ffffff;
+
+  --color-border: #dcd9d3;
+  --color-border-subtle: #cfcbc4;
+  --color-border-dashed: #b9b5ad;
+
+  --color-accent: #0e6b66;
+  --color-accent-hover: #0a4f4b;
+  --color-accent-subtle: #e7f1f0;
+
+  --color-selected-row: #e7f1f0;
+
+  --color-location-bg: #fbecd0;
+  --color-location-text: #6b4100;
+
+  --color-chip-bg: #efede8;
+  --color-chip-text: #4a4844;
+
+  --color-success: #1f6b3a;
+  /* Crimson rather than the accent's teal, so a failure never reads
+     as a selection (design §10.3). */
+  --color-error: #b3163a;
+  --color-error-tint: rgba(179, 22, 58, 0.16);
+  --color-text-on-error: #ffffff;
+
+  --color-progress-track: #e4e1db;
+
+  --color-overlay-backdrop: rgba(0, 0, 0, 0.45);
+
+  /* Typography */
+  --font-sans: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark theme colors (design §10.3) */
+    --color-bg-app: #1c1b18;
+    --color-bg-surface: #262522;
+    --color-bg-subtle: #1f1e1b;
+    --color-bg-muted: #2f2e2a;
+
+    --color-text-primary: #f2efe9;
+    --color-text-secondary: #a8a49c;
+    --color-text-muted: #78756e;
+    --color-text-on-accent: #1c1b18;
+
+    --color-border: #3e3c38;
+    --color-border-subtle: #4a4742;
+    --color-border-dashed: #5c5952;
+
+    --color-accent: #3fa79e;
+    --color-accent-hover: #4db3aa;
+    --color-accent-subtle: #1f3a38;
+
+    --color-selected-row: #1f3a38;
+
+    --color-location-bg: #4a3818;
+    --color-location-text: #f6cf8a;
+
+    --color-chip-bg: #3a3833;
+    --color-chip-text: #d6d2ca;
+
+    --color-success: #43a047;
+    --color-error: #ff7a8a;
+    --color-error-tint: rgba(255, 122, 138, 0.2);
+    --color-text-on-error: #1c1b18;
+
+    --color-progress-track: #363430;
+
+    --color-overlay-backdrop: rgba(0, 0, 0, 0.65);
+  }
+}
