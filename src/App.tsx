@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { DropZone, SegmentedControl } from "./components";
-import { useItemsDropped } from "./features/items";
+import { ItemDetails } from "./features/details";
+import { ItemList, useItemsDropped } from "./features/items";
 import { JobFooter, JobSummaryBanner, useJobEvents } from "./features/job";
 import { OutputDirError, OutputDirField } from "./features/output";
 import { useBlockBrowserShortcuts } from "./features/shortcuts";
@@ -93,11 +94,11 @@ export function AppShell() {
             }
           />
 
-          <OutputDirError />
-
           <JobSummaryBanner finished={job.finished} />
 
-          {items.length === 0 && (
+          <OutputDirError />
+
+          {items.length === 0 ? (
             <DropZone
               title={t.dropZone.title}
               description={t.dropZone.description}
@@ -106,14 +107,12 @@ export function AppShell() {
               onAddFiles={handleAddFiles}
               onAddFolder={handleAddFolder}
             />
+          ) : (
+            <ItemList />
           )}
         </main>
 
-        <aside className="app-aside" aria-label={t.details.ariaLabel}>
-          <span className="hint" style={{ lineHeight: 1.7 }}>
-            {t.details.hintEmpty}
-          </span>
-        </aside>
+        <ItemDetails />
       </div>
 
       <JobFooter />

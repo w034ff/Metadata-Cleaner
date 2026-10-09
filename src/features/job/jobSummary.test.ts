@@ -63,4 +63,43 @@ describe("jobSummary", () => {
     );
     expect(summary).toBe("Finished: 4 succeeded · 1 failed");
   });
+
+  it("includes unreadable count when greater than zero", () => {
+    const jaSummary = formatJobSummary(
+      { succeeded: 4, failed: 1, unprocessed: 0, cancelled: false },
+      "ja",
+      1,
+    );
+    expect(jaSummary).toBe(
+      "終わりました：成功 4 件 · 失敗 1 件 · 読み込めない 1 件",
+    );
+
+    const enSummary = formatJobSummary(
+      { succeeded: 4, failed: 1, unprocessed: 0, cancelled: false },
+      "en",
+      1,
+    );
+    expect(enSummary).toBe(
+      "Finished: 4 succeeded · 1 failed · 1 could not be read",
+    );
+  });
+
+  it("omits unreadable count when zero", () => {
+    const summary = formatJobSummary(
+      { succeeded: 4, failed: 0, unprocessed: 0, cancelled: false },
+      "ja",
+      0,
+    );
+    expect(summary).toBe("終わりました：成功 4 件");
+    expect(summary).not.toContain("読み込めない");
+  });
+
+  it("considers job unsuccessful when unreadableCount > 0", () => {
+    expect(
+      isJobSuccessful(
+        { succeeded: 4, failed: 0, unprocessed: 0, cancelled: false },
+        1,
+      ),
+    ).toBe(false);
+  });
 });

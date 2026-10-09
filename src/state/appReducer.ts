@@ -17,6 +17,11 @@ export function createInitialAppState(
       items: [],
       outputDir: null,
       job: { ...initialJobState },
+      selectedId: null,
+      detailsRequestId: 0,
+      details: null,
+      detailsError: null,
+      isLoadingDetails: false,
     };
   }
   return {
@@ -24,6 +29,11 @@ export function createInitialAppState(
     items: [],
     outputDir: settings.outputDir,
     job: { ...initialJobState },
+    selectedId: null,
+    detailsRequestId: 0,
+    details: null,
+    detailsError: null,
+    isLoadingDetails: false,
   };
 }
 
@@ -50,22 +60,97 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         language: languageReducer(state.language, action),
       };
-    case "SET_ITEMS":
-      return dropStaleResult(state, { ...state, items: action.items });
+    case "SET_ITEMS": {
+      const stillSelected =
+        state.selectedId !== null &&
+        action.items.some((item) => item.id === state.selectedId);
+      const nextState: AppState = {
+        ...state,
+        items: action.items,
+        selectedId: stillSelected ? state.selectedId : null,
+        details: stillSelected ? state.details : null,
+        detailsError: stillSelected ? state.detailsError : null,
+        isLoadingDetails: stillSelected ? state.isLoadingDetails : false,
+      };
+      return dropStaleResult(state, nextState);
+    }
     case "ADD_ITEMS":
       return dropStaleResult(state, {
         ...state,
         items: [...state.items, ...action.items],
       });
-    case "REMOVE_ITEMS":
-      return dropStaleResult(state, {
+    case "REMOVE_ITEMS": {
+      const wasSelected =
+        state.selectedId !== null && action.ids.includes(state.selectedId);
+      const nextState: AppState = {
         ...state,
         items: state.items.filter((item) => !action.ids.includes(item.id)),
-      });
-    case "CLEAR_ITEMS":
-      return dropStaleResult(state, { ...state, items: [] });
+        selectedId: wasSelected ? null : state.selectedId,
+        details: wasSelected ? null : state.details,
+        detailsError: wasSelected ? null : state.detailsError,
+        isLoadingDetails: wasSelected ? false : state.isLoadingDetails,
+      };
+      return dropStaleResult(state, nextState);
+    }
+    case "CLEAR_ITEMS": {
+      const nextState: AppState = {
+        ...state,
+        items: [],
+        selectedId: null,
+        details: null,
+        detailsError: null,
+        isLoadingDetails: false,
+      };
+      return dropStaleResult(state, nextState);
+    }
     case "SET_OUTPUT_DIR":
       return dropStaleResult(state, { ...state, outputDir: action.outputDir });
+    case "SELECT_ITEM": {
+      if (action.id === null || action.id === state.selectedId) {
+        return {
+          ...state,
+          selectedId: null,
+          details: null,
+          detailsError: null,
+          isLoadingDetails: false,
+        };
+      }
+      return {
+        ...state,
+        selectedId: action.id,
+        details: null,
+        detailsError: null,
+        isLoadingDetails: false,
+      };
+    }
+    case "FETCH_DETAILS_START":
+      return {
+        ...state,
+        detailsRequestId: action.requestId,
+        details: null,
+        detailsError: null,
+        isLoadingDetails: true,
+      };
+    case "FETCH_DETAILS_SUCCESS":
+      if (action.requestId !== state.detailsRequestId) {
+        return state;
+      }
+      return {
+        ...state,
+        details: action.details,
+        detailsError: null,
+        isLoadingDetails: false,
+      };
+    case "FETCH_DETAILS_FAILURE":
+      if (action.requestId !== state.detailsRequestId) {
+        return state;
+      }
+      return {
+        ...state,
+        details: null,
+        detailsError: action.error,
+        isLoadingDetails: false,
+      };
     case "JOB_STARTED":
     case "JOB_CANCEL_REQUESTED":
     case "JOB_PROGRESS":

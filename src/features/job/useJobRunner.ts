@@ -25,13 +25,14 @@ export function useJobRunner(): JobRunnerResult {
   const { runWithOutputDir, isPicking } = useEnsureOutputDir();
 
   const startJob = useCallback(async () => {
-    if (isJobActive(job) || items.length === 0) {
+    const validItems = items.filter((it) => it.error === null);
+    if (isJobActive(job) || validItems.length === 0) {
       return;
     }
 
     await runWithOutputDir(outputDir, async () => {
-      const targets = items.map((it) => ({ id: it.id, name: it.name }));
-      const ids = items.map((it) => it.id);
+      const targets = validItems.map((it) => ({ id: it.id, name: it.name }));
+      const ids = validItems.map((it) => it.id);
 
       dispatch({ type: "JOB_STARTED", targets });
 

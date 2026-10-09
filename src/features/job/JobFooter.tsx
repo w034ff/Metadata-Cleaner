@@ -18,6 +18,8 @@ export function JobFooter() {
   const doneCount = job.progress?.done ?? 0;
   const totalCount = job.progress?.total ?? job.targets.length;
 
+  const validCount = items.filter((it) => it.error === null).length;
+
   return (
     <footer className="job-footer">
       {isActive ? (
@@ -50,7 +52,7 @@ export function JobFooter() {
             )
           ) : items.length > 0 ? (
             <span className="hint">
-              {formatMessage(t.footer.cleanCount, { count: items.length })}
+              {formatMessage(t.footer.cleanCount, { count: validCount })}
             </span>
           ) : (
             <span className="hint">{t.footer.noFiles}</span>
@@ -59,7 +61,7 @@ export function JobFooter() {
           <button
             type="button"
             className="btn btn-primary job-footer-action"
-            disabled={items.length === 0 || isPickingOutputDir}
+            disabled={validCount === 0 || isPickingOutputDir}
             onClick={() => void startJob()}
           >
             {t.footer.cleanAndSave}
