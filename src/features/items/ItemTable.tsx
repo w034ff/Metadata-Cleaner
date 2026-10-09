@@ -30,13 +30,19 @@ export function ItemTable() {
           {items.map((item) => {
             const isSelected = item.id === selectedId;
             return (
-              <tr key={item.id} className={isSelected ? "selected" : ""}>
+              // The whole row selects; the name stays a button so the row
+              // can be reached and picked from the keyboard, and its click
+              // reaches the row like any other.
+              <tr
+                key={item.id}
+                className={isSelected ? "selected" : ""}
+                onClick={() => void selectRow(item.id)}
+              >
                 <td className="cell-name">
                   <button
                     type="button"
                     className="row-btn"
                     aria-pressed={isSelected}
-                    onClick={() => void selectRow(item.id)}
                   >
                     {item.name}
                   </button>

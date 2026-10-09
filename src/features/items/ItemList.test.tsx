@@ -237,4 +237,36 @@ describe("ItemList", () => {
 
     expect(removeSpy).toHaveBeenCalledWith([1, 2, 3]);
   });
+
+  it("selects a row from any cell and from its name, once per click", async () => {
+    const getDetails = vi
+      .spyOn(ipcModule, "getDetails")
+      .mockResolvedValue({ groups: [], kept: [], truncated: false });
+    const state: AppState = {
+      ...createInitialAppState("ja"),
+      items: sampleItems,
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <ItemList />
+      </AppStateProvider>,
+    );
+
+    // A cell other than the name selects the row.
+    await act(async () => {
+      fireEvent.click(screen.getByText("WebP"));
+    });
+    expect(getDetails).toHaveBeenCalledTimes(1);
+    expect(getDetails).toHaveBeenLastCalledWith(3);
+
+    // The name button selects its row and is not handled twice.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "photo.jpg" }));
+    });
+    expect(getDetails).toHaveBeenCalledTimes(2);
+    expect(getDetails).toHaveBeenLastCalledWith(1);
+
+    getDetails.mockRestore();
+  });
 });

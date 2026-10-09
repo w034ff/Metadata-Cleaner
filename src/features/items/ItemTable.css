@@ -9,6 +9,13 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+  /* Rows are picked by clicking; selectable text would start a text drag
+     instead. */
+  user-select: none;
+}
+
+.item-table tbody tr {
+  cursor: pointer;
 }
 
 .item-table th {

@@ -49,7 +49,7 @@ export function AppShell() {
   }, [dispatch]);
 
   return (
-    <div className="app-layout">
+    <div className="app-container">
       <header className="app-header">
         <h1 className="app-title">
           <svg
