@@ -1,14 +1,17 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DropZone, SegmentedControl } from "./components";
+import { AboutDialog } from "./features/about";
 import { ItemDetails } from "./features/details";
 import { ItemList, useItemsDropped } from "./features/items";
 import { JobFooter, JobSummaryBanner, useJobEvents } from "./features/job";
 import { OutputDirError, OutputDirField } from "./features/output";
+import { useSettingsAutoSave } from "./features/settings";
 import { useBlockBrowserShortcuts } from "./features/shortcuts";
 import { getTranslations } from "./i18n";
-import { addFiles } from "./ipc";
+import { addFiles, getSettings, type Settings } from "./ipc";
 import {
   AppStateProvider,
+  createInitialAppState,
   isJobActive,
   useAppDispatch,
   useAppState,
@@ -19,10 +22,23 @@ export function AppShell() {
   useBlockBrowserShortcuts();
   useJobEvents();
   useItemsDropped();
+  useSettingsAutoSave();
 
   const { language, items, outputDir, job } = useAppState();
   const dispatch = useAppDispatch();
   const t = getTranslations(language.language);
+
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const aboutButtonRef = useRef<HTMLButtonElement>(null);
+  const wasAboutOpenRef = useRef(false);
+
+  // Give focus back to the button that opened the dialog.
+  useEffect(() => {
+    if (wasAboutOpenRef.current && !isAboutOpen) {
+      aboutButtonRef.current?.focus();
+    }
+    wasAboutOpenRef.current = isAboutOpen;
+  }, [isAboutOpen]);
 
   const isJobRunning = isJobActive(job);
 
@@ -49,80 +65,156 @@ export function AppShell() {
   }, [dispatch]);
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1 className="app-title">
-          <svg
-            className="app-title-icon"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M20 20H9l-5-5a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L12 20" />
-            <path d="M8.5 8.5l7 7" />
-          </svg>
-          {t.app.title}
-        </h1>
-        <div className="app-header-actions">
-          <SegmentedControl
-            label={t.app.languageLabel}
-            value={language.language}
-            disabled={isJobRunning}
-            options={[
-              { value: "ja", label: t.app.languages.ja },
-              { value: "en", label: t.app.languages.en },
-            ]}
-            onChange={(lang) =>
-              dispatch({ type: "SET_LANGUAGE", language: lang })
-            }
-          />
-        </div>
-      </header>
-
-      <div className="app-body">
-        <main className="app-main">
-          <OutputDirField
-            value={outputDir}
-            disabled={isJobRunning}
-            onChange={(dir) =>
-              dispatch({ type: "SET_OUTPUT_DIR", outputDir: dir })
-            }
-          />
-
-          <JobSummaryBanner finished={job.finished} />
-
-          <OutputDirError />
-
-          {items.length === 0 ? (
-            <DropZone
-              title={t.dropZone.title}
-              description={t.dropZone.description}
-              addFilesLabel={t.dropZone.addFiles}
-              addFolderLabel={t.dropZone.addFolder}
-              onAddFiles={handleAddFiles}
-              onAddFolder={handleAddFolder}
+    <>
+      <div className="app-container" inert={isAboutOpen ? true : undefined}>
+        <header className="app-header">
+          <h1 className="app-title">
+            <svg
+              className="app-title-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 20H9l-5-5a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L12 20" />
+              <path d="M8.5 8.5l7 7" />
+            </svg>
+            {t.app.title}
+          </h1>
+          <div className="app-header-actions">
+            <SegmentedControl
+              label={t.app.languageLabel}
+              value={language.language}
+              disabled={isJobRunning}
+              options={[
+                { value: "ja", label: t.app.languages.ja },
+                { value: "en", label: t.app.languages.en },
+              ]}
+              onChange={(lang) =>
+                dispatch({ type: "SET_LANGUAGE", language: lang })
+              }
             />
-          ) : (
-            <ItemList />
-          )}
-        </main>
+            <button
+              ref={aboutButtonRef}
+              type="button"
+              className="icon-btn"
+              aria-label={t.app.aboutButtonAria}
+              onClick={() => setIsAboutOpen(true)}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 11v5" />
+                <path d="M12 8h.01" />
+              </svg>
+            </button>
+          </div>
+        </header>
 
-        <ItemDetails />
+        <div className="app-body">
+          <main className="app-main">
+            <OutputDirField
+              value={outputDir}
+              disabled={isJobRunning}
+              onChange={(dir) =>
+                dispatch({ type: "SET_OUTPUT_DIR", outputDir: dir })
+              }
+            />
+
+            <JobSummaryBanner finished={job.finished} />
+
+            <OutputDirError />
+
+            {items.length === 0 ? (
+              <DropZone
+                title={t.dropZone.title}
+                description={t.dropZone.description}
+                addFilesLabel={t.dropZone.addFiles}
+                addFolderLabel={t.dropZone.addFolder}
+                onAddFiles={handleAddFiles}
+                onAddFolder={handleAddFolder}
+              />
+            ) : (
+              <ItemList />
+            )}
+          </main>
+
+          <ItemDetails />
+        </div>
+
+        <JobFooter />
       </div>
 
-      <JobFooter />
-    </div>
+      <AboutDialog isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+    </>
   );
 }
 
-export function App() {
+export interface AppProps {
+  /** The OS language to assume instead of `navigator.language`. */
+  initialNavLang?: string;
+  /**
+   * Settings to start from instead of asking Rust with `get_settings`;
+   * `null` starts from the defaults.
+   */
+  initialSettings?: Settings | null;
+}
+
+/**
+ * The app. It shows nothing until the saved settings are read (design §6.7),
+ * so the screen does not first appear in the defaults and then change.
+ */
+export function App({ initialNavLang, initialSettings }: AppProps = {}) {
+  const [settings, setSettings] = useState<
+    { loaded: false } | { loaded: true; value: Settings | null }
+  >(
+    initialSettings === undefined
+      ? { loaded: false }
+      : { loaded: true, value: initialSettings },
+  );
+
+  useEffect(() => {
+    if (settings.loaded) {
+      return;
+    }
+    let isMounted = true;
+    getSettings().then(
+      (value) => {
+        if (isMounted) {
+          setSettings({ loaded: true, value });
+        }
+      },
+      () => {
+        if (isMounted) {
+          setSettings({ loaded: true, value: null });
+        }
+      },
+    );
+    return () => {
+      isMounted = false;
+    };
+  }, [settings.loaded]);
+
+  if (!settings.loaded) {
+    return <div className="app-container" />;
+  }
+
   return (
-    <AppStateProvider>
+    <AppStateProvider
+      initialState={createInitialAppState(initialNavLang, settings.value)}
+    >
       <AppShell />
     </AppStateProvider>
   );
