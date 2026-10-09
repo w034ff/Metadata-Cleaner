@@ -491,7 +491,9 @@ fn file_modified_time_not_copied() {
 
     // Set input file modified time to 1 year ago
     let one_year_ago = SystemTime::now() - Duration::from_secs(365 * 24 * 3600);
-    let file = fs::File::open(&path).unwrap();
+    // Windows needs write access to change the time; Linux lets the owner
+    // change it through a read-only handle.
+    let file = fs::OpenOptions::new().write(true).open(&path).unwrap();
     file.set_modified(one_year_ago).unwrap();
     drop(file);
 
