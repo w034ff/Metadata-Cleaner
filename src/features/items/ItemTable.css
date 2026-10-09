@@ -10,7 +10,9 @@
   border-collapse: collapse;
   table-layout: fixed;
   /* Rows are picked by clicking; selectable text would start a text drag
-     instead. */
+     instead. WebKitGTK (Linux) reads only the prefixed property, and no
+     autoprefixer runs on this CSS. */
+  -webkit-user-select: none;
   user-select: none;
 }
 
