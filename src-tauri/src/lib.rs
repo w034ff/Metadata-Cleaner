@@ -72,11 +72,9 @@ pub fn run() {
                 settings::restore_settings(&state, &config_dir);
             }
             app.manage(state);
-            app.manage(commands::CheckedWorker::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::check_worker,
             commands::get_about,
             commands::get_settings,
             commands::save_settings,
