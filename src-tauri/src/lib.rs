@@ -1,8 +1,9 @@
 //! Application entry point.
 
 use std::ffi::OsString;
-use std::sync::Arc;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
 use mcleaner_worker::WORKER_FLAG;
 use tauri::{DragDropEvent, Emitter, Manager, WindowEvent};
@@ -10,9 +11,11 @@ use tauri::{DragDropEvent, Emitter, Manager, WindowEvent};
 pub mod commands;
 pub mod error;
 pub mod items;
+pub mod settings;
 pub mod worker_pool;
 
 use items::ItemTable;
+use settings::SettingsStore;
 use worker_pool::{WorkerPool, WorkerPoolConfig};
 
 /// Name of the event that reports what a drop added (design §7.2).
@@ -27,6 +30,11 @@ pub struct AppState {
     pub pool: WorkerPool,
     /// Flag indicating whether a cleaning job is currently executing (design §6.1, §7.1).
     pub is_running: Arc<AtomicBool>,
+    /// The folder cleaned files are saved in (design §6.5). Set by
+    /// `pick_output_dir` and the restored settings, read by `start_clean`.
+    pub output_dir: Arc<Mutex<Option<PathBuf>>>,
+    /// The settings in memory and the file they are written to (design §6.7).
+    pub settings: Arc<SettingsStore>,
 }
 
 impl AppState {
@@ -36,6 +44,8 @@ impl AppState {
             items: Arc::new(ItemTable::new()),
             pool,
             is_running: Arc::new(AtomicBool::new(false)),
+            output_dir: Arc::new(Mutex::new(None)),
+            settings: Arc::new(SettingsStore::default()),
         }
     }
 }
@@ -52,12 +62,21 @@ pub fn run() {
             let exe = std::env::current_exe()?;
             let config = WorkerPoolConfig::new(exe, [OsString::from(WORKER_FLAG)]);
             let state = AppState::new(WorkerPool::new(config));
+            // Without a settings folder the app still starts, with the
+            // defaults, and keeps changes in memory (design §6.7).
+            if let Ok(config_dir) = app.path().app_config_dir() {
+                settings::restore_settings(&state, &config_dir);
+            }
             app.manage(state);
             app.manage(commands::CheckedWorker::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::check_worker,
+            commands::get_about,
+            commands::get_settings,
+            commands::save_settings,
+            commands::pick_output_dir,
             commands::add_files,
             commands::remove_items,
             commands::get_details,

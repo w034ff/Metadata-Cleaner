@@ -7,9 +7,10 @@ use mcleaner_core::detect::Format;
 use mcleaner_core::report::{
     DetailEntry, DetailGroup, DetailValue, Details, Field, KeptInfo, MetadataKind, ResolutionUnit,
 };
-use metadata_cleaner_lib::commands::AddSource;
+use metadata_cleaner_lib::commands::{AboutInfo, AddSource};
 use metadata_cleaner_lib::error::{ErrorCode, IpcError};
 use metadata_cleaner_lib::items::{AddResult, FileItem, ItemsDropped, Skipped};
+use metadata_cleaner_lib::settings::{Language, OutputDirLabel, Settings, SettingsInput};
 use ts_rs::{Config, TS};
 
 #[test]
@@ -34,4 +35,9 @@ fn export_typescript_bindings() {
     Skipped::export_all(&cfg).expect("exporting Skipped");
     AddResult::export_all(&cfg).expect("exporting AddResult");
     ItemsDropped::export_all(&cfg).expect("exporting ItemsDropped");
+    AboutInfo::export_all(&cfg).expect("exporting AboutInfo");
+    Language::export_all(&cfg).expect("exporting Language");
+    OutputDirLabel::export_all(&cfg).expect("exporting OutputDirLabel");
+    Settings::export_all(&cfg).expect("exporting Settings");
+    SettingsInput::export_all(&cfg).expect("exporting SettingsInput");
 }
