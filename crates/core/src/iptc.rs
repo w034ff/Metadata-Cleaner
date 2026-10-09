@@ -261,12 +261,35 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
         }
     }
 
+    // Datasets that produce no entry of their own (record 1, a lone 2:60) are
+    // still removed with the block, so the block is reported.
+    if entries.is_empty() {
+        entries.push((
+            MetadataKind::Other,
+            DetailEntry {
+                field: Field::Other,
+                name: Some("IPTC".to_string()),
+                value: DetailValue::Bytes(iptc_data.len() as u64),
+            },
+        ));
+    }
+
     entries
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_record_1_only_is_reported_as_other() {
+        // 1:90 (coded character set: UTF-8) and nothing else
+        let data = [0x1C, 1, 90, 0, 3, 0x1B, 0x25, 0x47];
+        let entries = collect_details(&data);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0, MetadataKind::Other);
+        assert_eq!(entries[0].1.value, DetailValue::Bytes(data.len() as u64));
+    }
 
     fn make_dataset(rec: u8, num: u8, data: &[u8]) -> Vec<u8> {
         let mut out = vec![IPTC_TAG_MARKER, rec, num];

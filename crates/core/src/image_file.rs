@@ -13,15 +13,6 @@ use crate::report::{
 use crate::webp;
 use crate::xmp;
 
-const KEEP_PNG_CHUNKS: [&[u8; 4]; 18] = [
-    b"IHDR", b"PLTE", b"IDAT", b"IEND", b"tRNS", b"gAMA", b"cHRM", b"sRGB", b"iCCP", b"cICP",
-    b"mDCV", b"cLLI", b"sBIT", b"bKGD", b"pHYs", b"acTL", b"fcTL", b"fdAT",
-];
-
-const KEEP_WEBP_CHUNKS: [&[u8; 4]; 7] = [
-    b"VP8 ", b"VP8L", b"VP8X", b"ALPH", b"ANIM", b"ANMF", b"ICCP",
-];
-
 /// Inspects an image file and returns its format, found metadata kinds, and kept info.
 pub fn inspect(bytes: &[u8]) -> Result<Inspection, CoreError> {
     let format = detect::detect(bytes)?;
@@ -289,36 +280,7 @@ fn collect_jpeg_entries_and_kept(bytes: &[u8]) -> Result<RawEntriesAndKept, Core
         }
     }
 
-    // 5. Trailing data after EOI
-    let trailing = jpeg.trailing();
-    if !trailing.is_empty() {
-        if trailing.starts_with(&[0xFF, 0xD8, 0xFF]) {
-            let val = if let Ok(parsed) = jpeg::parse(trailing)
-                && let Some((w, h)) = parsed.dimensions()
-            {
-                DetailValue::Text(format!("{w} × {h} px"))
-            } else {
-                DetailValue::Bytes(trailing.len() as u64)
-            };
-            entries.push((
-                MetadataKind::Thumbnail,
-                DetailEntry {
-                    field: Field::Thumbnail,
-                    name: None,
-                    value: val,
-                },
-            ));
-        } else {
-            entries.push((
-                MetadataKind::Other,
-                DetailEntry {
-                    field: Field::Other,
-                    name: Some("trailing data".to_string()),
-                    value: DetailValue::Bytes(trailing.len() as u64),
-                },
-            ));
-        }
-    }
+    entries.extend(trailing_entry(jpeg.trailing()));
 
     Ok((entries, kept))
 }
@@ -436,54 +398,32 @@ fn collect_png_entries_and_kept(bytes: &[u8]) -> Result<RawEntriesAndKept, CoreE
                             value: DetailValue::Text(val),
                         },
                     ));
-                }
-            }
-            _ => {
-                if !KEEP_PNG_CHUNKS.contains(&&kind) {
-                    let name = String::from_utf8_lossy(&kind).into_owned();
+                } else {
                     entries.push((
-                        MetadataKind::Other,
+                        MetadataKind::DateTime,
                         DetailEntry {
-                            field: Field::Other,
-                            name: Some(name),
+                            field: Field::Modified,
+                            name: None,
                             value: DetailValue::Bytes(data.len() as u64),
                         },
                     ));
                 }
             }
+            _ => {
+                let name = String::from_utf8_lossy(&kind).into_owned();
+                entries.push((
+                    MetadataKind::Other,
+                    DetailEntry {
+                        field: Field::Other,
+                        name: Some(name),
+                        value: DetailValue::Bytes(data.len() as u64),
+                    },
+                ));
+            }
         }
     }
 
-    // 5. Trailing data after IEND
-    let trailing = png.trailing();
-    if !trailing.is_empty() {
-        if trailing.starts_with(&[0xFF, 0xD8, 0xFF]) {
-            let val = if let Ok(parsed) = jpeg::parse(trailing)
-                && let Some((w, h)) = parsed.dimensions()
-            {
-                DetailValue::Text(format!("{w} × {h} px"))
-            } else {
-                DetailValue::Bytes(trailing.len() as u64)
-            };
-            entries.push((
-                MetadataKind::Thumbnail,
-                DetailEntry {
-                    field: Field::Thumbnail,
-                    name: None,
-                    value: val,
-                },
-            ));
-        } else {
-            entries.push((
-                MetadataKind::Other,
-                DetailEntry {
-                    field: Field::Other,
-                    name: Some("trailing data".to_string()),
-                    value: DetailValue::Bytes(trailing.len() as u64),
-                },
-            ));
-        }
-    }
+    entries.extend(trailing_entry(png.trailing()));
 
     Ok((entries, kept))
 }
@@ -525,53 +465,55 @@ fn collect_webp_entries_and_kept(bytes: &[u8]) -> Result<RawEntriesAndKept, Core
                 entries.extend(xmp::xmp_detail_entries(data));
             }
             _ => {
-                if !KEEP_WEBP_CHUNKS.contains(&&id) {
-                    let name = String::from_utf8_lossy(&id).into_owned();
-                    entries.push((
-                        MetadataKind::Other,
-                        DetailEntry {
-                            field: Field::Other,
-                            name: Some(name),
-                            value: DetailValue::Bytes(data.len() as u64),
-                        },
-                    ));
-                }
+                let name = String::from_utf8_lossy(&id).into_owned();
+                entries.push((
+                    MetadataKind::Other,
+                    DetailEntry {
+                        field: Field::Other,
+                        name: Some(name),
+                        value: DetailValue::Bytes(data.len() as u64),
+                    },
+                ));
             }
         }
     }
 
-    // 5. Trailing data after RIFF payload
-    let trailing = webp.trailing();
-    if !trailing.is_empty() {
-        if trailing.starts_with(&[0xFF, 0xD8, 0xFF]) {
-            let val = if let Ok(parsed) = jpeg::parse(trailing)
-                && let Some((w, h)) = parsed.dimensions()
-            {
-                DetailValue::Text(format!("{w} × {h} px"))
-            } else {
-                DetailValue::Bytes(trailing.len() as u64)
-            };
-            entries.push((
-                MetadataKind::Thumbnail,
-                DetailEntry {
-                    field: Field::Thumbnail,
-                    name: None,
-                    value: val,
-                },
-            ));
-        } else {
-            entries.push((
-                MetadataKind::Other,
-                DetailEntry {
-                    field: Field::Other,
-                    name: Some("trailing data".to_string()),
-                    value: DetailValue::Bytes(trailing.len() as u64),
-                },
-            ));
-        }
-    }
+    entries.extend(trailing_entry(webp.trailing()));
 
     Ok((entries, kept))
+}
+
+/// The entry for the bytes after the image: an appended image (an MPF image
+/// or a motion photo's still) is a thumbnail, anything else is `Other`.
+fn trailing_entry(trailing: &[u8]) -> Option<(MetadataKind, DetailEntry)> {
+    if trailing.is_empty() {
+        return None;
+    }
+    if trailing.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        let value = if let Ok(parsed) = jpeg::parse(trailing)
+            && let Some((w, h)) = parsed.dimensions()
+        {
+            DetailValue::Text(format!("{w} × {h} px"))
+        } else {
+            DetailValue::Bytes(trailing.len() as u64)
+        };
+        return Some((
+            MetadataKind::Thumbnail,
+            DetailEntry {
+                field: Field::Thumbnail,
+                name: None,
+                value,
+            },
+        ));
+    }
+    Some((
+        MetadataKind::Other,
+        DetailEntry {
+            field: Field::Other,
+            name: Some("trailing data".to_string()),
+            value: DetailValue::Bytes(trailing.len() as u64),
+        },
+    ))
 }
 
 /// Dispatches a PNG text keyword to its category and field.
@@ -1502,6 +1444,19 @@ mod tests {
             .find(|g| g.kind == MetadataKind::Other)
             .unwrap();
         assert_eq!(other.entries[0].name.as_deref(), Some("CustomKey"));
+    }
+
+    #[test]
+    fn test_png_short_time_chunk_is_still_reported() {
+        let mut png_bytes = b"\x89PNG\r\n\x1a\n".to_vec();
+        png_bytes.extend(make_png_chunk(
+            b"IHDR",
+            &[0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0],
+        ));
+        png_bytes.extend(make_png_chunk(b"tIME", &[0x07, 0xEA]));
+        png_bytes.extend(make_png_chunk(b"IEND", &[]));
+        let insp = inspect(&png_bytes).expect("inspect");
+        assert_eq!(insp.kinds, vec![MetadataKind::DateTime]);
     }
 
     #[test]

@@ -189,9 +189,17 @@ fn format_gps_coord(field: &exif::Field, ref_field: Option<&exif::Field>) -> Str
         _ => return field.display_value().to_string(),
     };
 
-    let deg = rationals[0].to_f64();
-    let min = rationals[1].to_f64();
-    let sec = rationals[2].to_f64();
+    // Some writers put a fractional value in the degrees or minutes and zeros
+    // after it, so the parts are recombined before splitting into D/M/S.
+    let total =
+        rationals[0].to_f64() + rationals[1].to_f64() / 60.0 + rationals[2].to_f64() / 3600.0;
+    if !total.is_finite() || total < 0.0 {
+        return field.display_value().to_string();
+    }
+    let total_hundredths = (total * 360_000.0).round() as u64;
+    let deg_int = total_hundredths / 360_000;
+    let min_int = total_hundredths % 360_000 / 6_000;
+    let sec = (total_hundredths % 6_000) as f64 / 100.0;
 
     let mut sec_str = format!("{:.2}", sec);
     if sec_str.contains('.') {
@@ -202,9 +210,6 @@ fn format_gps_coord(field: &exif::Field, ref_field: Option<&exif::Field>) -> Str
             sec_str.pop();
         }
     }
-
-    let deg_int = deg.round() as u32;
-    let min_int = min.round() as u32;
 
     let ref_str = ref_field
         .and_then(|rf| match &rf.value {
@@ -276,9 +281,19 @@ fn format_user_comment(field: &exif::Field) -> String {
 
 /// Collects detail entries from raw TIFF bytes in file order.
 pub fn collect_details(tiff: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
+    // EXIF that cannot be read is still removed, so it is still reported.
     let exif = match Reader::new().read_raw(tiff.to_vec()) {
         Ok(e) => e,
-        Err(_) => return Vec::new(),
+        Err(_) => {
+            return vec![(
+                MetadataKind::Other,
+                DetailEntry {
+                    field: Field::Other,
+                    name: Some("EXIF".to_string()),
+                    value: DetailValue::Bytes(tiff.len() as u64),
+                },
+            )];
+        }
     };
 
     let mut entries = Vec::new();
@@ -693,7 +708,61 @@ mod tests {
                 .get_uint(0),
             Some(2)
         );
+        for tag in [Tag::XResolution, Tag::YResolution] {
+            match &re_parsed.get_field(tag, In::PRIMARY).unwrap().value {
+                Value::Rational(v) => assert_eq!((v[0].num, v[0].denom), (300, 1)),
+                other => panic!("{tag} is not a rational: {other:?}"),
+            }
+        }
         assert!(re_parsed.get_field(Tag::Artist, In::PRIMARY).is_none());
+    }
+
+    fn write_tiff(fields: &[exif::Field]) -> Vec<u8> {
+        let mut writer = exif::experimental::Writer::new();
+        for f in fields {
+            writer.push_field(f);
+        }
+        let mut cur = std::io::Cursor::new(Vec::new());
+        writer.write(&mut cur, true).unwrap();
+        cur.into_inner()
+    }
+
+    #[test]
+    fn test_collect_details_unreadable_exif_is_other() {
+        let entries = collect_details(&[0x12, 0x34, 0x56, 0x78]);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0, MetadataKind::Other);
+        assert_eq!(entries[0].1.value, DetailValue::Bytes(4));
+    }
+
+    #[test]
+    fn test_gps_fractional_degrees_are_split() {
+        let rational = |num, denom| exif::Rational { num, denom };
+        let tiff = write_tiff(&[
+            exif::Field {
+                tag: Tag::GPSLatitudeRef,
+                ifd_num: In::PRIMARY,
+                value: Value::Ascii(vec![b"S".to_vec()]),
+            },
+            // 12.5 degrees with zero minutes and seconds = 12°30′0″
+            exif::Field {
+                tag: Tag::GPSLatitude,
+                ifd_num: In::PRIMARY,
+                value: Value::Rational(vec![rational(25, 2), rational(0, 1), rational(0, 1)]),
+            },
+            // 65 degrees and 43.5 minutes = 65°43′30″
+            exif::Field {
+                tag: Tag::GPSLongitude,
+                ifd_num: In::PRIMARY,
+                value: Value::Rational(vec![rational(65, 1), rational(87, 2), rational(0, 1)]),
+            },
+        ]);
+        let values: Vec<_> = collect_details(&tiff)
+            .into_iter()
+            .map(|(_, e)| (e.field, e.value))
+            .collect();
+        assert!(values.contains(&(Field::Latitude, DetailValue::Text("12°30′0″ S".to_string()))));
+        assert!(values.contains(&(Field::Longitude, DetailValue::Text("65°43′30″".to_string()))));
     }
 
     #[test]
