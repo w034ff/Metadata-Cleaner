@@ -7,6 +7,9 @@ import type { AppAction, AppState } from "./types";
  * The state the app starts in: the saved `settings` (design §6.7), or the
  * defaults when there are none. The list of items always starts empty.
  */
+/** Request number that no details answer carries: request numbers start at 1. */
+const NO_DETAILS_REQUEST = 0;
+
 export function createInitialAppState(
   initialNavLang?: string,
   settings: Settings | null = null,
@@ -18,7 +21,7 @@ export function createInitialAppState(
       outputDir: null,
       job: { ...initialJobState },
       selectedId: null,
-      detailsRequestId: 0,
+      detailsRequestId: NO_DETAILS_REQUEST,
       details: null,
       detailsError: null,
       isLoadingDetails: false,
@@ -30,7 +33,7 @@ export function createInitialAppState(
     outputDir: settings.outputDir,
     job: { ...initialJobState },
     selectedId: null,
-    detailsRequestId: 0,
+    detailsRequestId: NO_DETAILS_REQUEST,
     details: null,
     detailsError: null,
     isLoadingDetails: false,
@@ -110,14 +113,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         return {
           ...state,
           selectedId: null,
+          detailsRequestId: NO_DETAILS_REQUEST,
           details: null,
           detailsError: null,
           isLoadingDetails: false,
         };
       }
+      // A new selection invalidates any answer still on its way; only the
+      // request started for this row (FETCH_DETAILS_START) is accepted.
       return {
         ...state,
         selectedId: action.id,
+        detailsRequestId: NO_DETAILS_REQUEST,
         details: null,
         detailsError: null,
         isLoadingDetails: false,

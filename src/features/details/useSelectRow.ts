@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { getDetails, normalizeIpcError } from "../../ipc";
 import { useAppDispatch, useAppState } from "../../state";
 
@@ -6,8 +6,11 @@ import { useAppDispatch, useAppState } from "../../state";
  * Hook to manage item row selection and fetching metadata details (design §6.2).
  */
 export function useSelectRow() {
-  const { items, selectedId, detailsRequestId, job } = useAppState();
+  const { items, selectedId, job } = useAppState();
   const dispatch = useAppDispatch();
+  // Numbered here rather than from the rendered state, so two selections made
+  // before the next render still get different numbers.
+  const lastRequestId = useRef(0);
 
   const selectRow = useCallback(
     async (id: number | null) => {
@@ -31,7 +34,8 @@ export function useSelectRow() {
         return;
       }
 
-      const requestId = detailsRequestId + 1;
+      lastRequestId.current += 1;
+      const requestId = lastRequestId.current;
       dispatch({ type: "FETCH_DETAILS_START", id, requestId });
 
       try {
@@ -45,7 +49,7 @@ export function useSelectRow() {
         });
       }
     },
-    [items, selectedId, detailsRequestId, job.results, dispatch],
+    [items, selectedId, job.results, dispatch],
   );
 
   return { selectedId, selectRow };

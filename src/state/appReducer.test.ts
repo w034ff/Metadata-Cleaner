@@ -128,6 +128,36 @@ describe("appReducer", () => {
     expect(state.isLoadingDetails).toBe(false);
   });
 
+  it("drops an answer that arrives after the selection changed", () => {
+    const details = { groups: [], kept: [], truncated: false };
+    let state = createInitialAppState();
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+    state = appReducer(state, { type: "SELECT_ITEM", id: sampleItem.id });
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_START",
+      id: sampleItem.id,
+      requestId: 1,
+    });
+
+    // Deselected while the answer for request 1 was still on its way.
+    state = appReducer(state, { type: "SELECT_ITEM", id: null });
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_SUCCESS",
+      requestId: 1,
+      details,
+    });
+    expect(state.details).toBe(null);
+
+    // Another row selected that needs no request (e.g. an error row).
+    state = appReducer(state, { type: "SELECT_ITEM", id: sampleItem.id });
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_SUCCESS",
+      requestId: 1,
+      details,
+    });
+    expect(state.details).toBe(null);
+  });
+
   it("resets selection when selected item is removed or cleared", () => {
     let state = createInitialAppState();
     state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
