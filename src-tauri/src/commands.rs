@@ -17,6 +17,68 @@ use ts_rs::TS;
 use crate::AppState;
 use crate::error::{ErrorCode, IpcError};
 use crate::items::{self, AddResult};
+use crate::settings::{self, OutputDirLabel, Settings, SettingsInput};
+
+/// Answer of [`get_about`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct AboutInfo {
+    pub version: String,
+}
+
+/// Returns the app version (design §7.1).
+#[tauri::command]
+pub fn get_about(app: AppHandle) -> AboutInfo {
+    AboutInfo {
+        version: app.package_info().version.to_string(),
+    }
+}
+
+/// Returns the settings, with the output folder as a label (design §6.7, §7.1).
+#[tauri::command]
+pub fn get_settings(state: tauri::State<'_, AppState>) -> Settings {
+    settings::get_settings_internal(&state)
+}
+
+/// Saves the language setting (design §6.7, §7.1).
+#[tauri::command]
+pub async fn save_settings(
+    state: tauri::State<'_, AppState>,
+    input: SettingsInput,
+) -> Result<(), IpcError> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || state.settings.save(&input))
+        .await
+        .map_err(task_failed)?
+}
+
+/// Asks for a folder and makes it the output folder. Returns `None`
+/// if the dialog was cancelled (design §6.7, §7.1).
+#[tauri::command]
+pub async fn pick_output_dir(
+    window: tauri::Window,
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<OutputDirLabel>, IpcError> {
+    if state.is_running.load(Ordering::SeqCst) {
+        return Err(IpcError::from_code(ErrorCode::JobRunning));
+    }
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(dir) = pick_folder(&window)? else {
+            return Ok(None);
+        };
+        let (label, persisted) = settings::apply_picked_dir(&state, dir)?;
+        #[cfg(debug_assertions)]
+        if let Err(error) = &persisted {
+            eprintln!("[debug] settings were not saved: {error}");
+        }
+        // The folder is in use even if the file could not be written.
+        let _ = persisted;
+        Ok(Some(label))
+    })
+    .await
+    .map_err(task_failed)?
+}
 
 /// The worker started by [`check_worker`], kept running so that the owner
 /// can end the app from the task manager and see the worker go with it
