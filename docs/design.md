@@ -209,7 +209,7 @@ PDF Converter（https://github.com/w034ff/PDF-Converter）と同じ作りのと�
 
 **調べる**
 
-- 上の「消すもの」が 1 つでもあれば、§4.5 の種類に分ける。`/Info` の各項目は §4.5 の表のとおり。`/Metadata` は XMP として §4.5 の規則で分ける（ストリームを展開する量は `MAX_XMP_BYTES`（4 MiB）まで。超えた分は読まない）。`/PieceInfo` は `Other`、`/Thumb` は `Thumbnail`、画像の中の JPEG は §4.5 の規則で分ける。
+- 上の「消すもの」が 1 つでもあれば、§4.5 の種類に分ける。`/Info` の各項目は §4.5 の表のとおり。`/Metadata` は XMP として §4.5 の規則で分ける。展開は `MAX_XMP_BYTES`（4 MiB）を上限にし（lopdf の `decompressed_content_with_limit`）、上限を超えるものと展開できないものは、中身を読まずに `Other` とする（値は圧縮されたままのバイト数）。lopdf は上限を超えると途中までの内容を返さないため。`/PieceInfo` は `Other`（値はアプリケーション名の並び）、`/Thumb` は `Thumbnail`、`/ID` は `Other`（元のファイルと書き出したファイルを結び付ける識別子なので、消すことを見せる）、画像の中の JPEG は §4.5 の規則で分ける。
 - 過去の版（`History`）: ファイルのバイト列の中の `startxref` の数が 2 以上なら、追記保存があったとみなす。ただし、先頭のオブジェクトが `/Linearized` の辞書で、数がちょうど 2 のときは、Web 表示用の最適化の 2 つ目の相互参照なので数えない。表示のためだけの判定で、除去は常に全体を書き直す。
 
 ### 4.7 調べた結果の型（`report.rs`）

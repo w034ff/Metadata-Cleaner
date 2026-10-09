@@ -93,6 +93,9 @@ jobs:
       - name: Image Performance Test (Release)
         run: cargo test -p mcleaner-core --release --test performance --locked
 
+      - name: PDF Performance Test (Release)
+        run: cargo test -p mcleaner-worker --release --test pdf_performance --locked
+
       # Both checks pin their target platforms (deny.toml, about.toml), so the
       # result does not depend on the runner OS and one runner is enough.
       - name: Install license tools
