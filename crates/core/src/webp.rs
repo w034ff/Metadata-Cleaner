@@ -21,9 +21,7 @@ struct Chunk<'a> {
 #[derive(Debug)]
 pub struct Webp<'a> {
     chunks: Vec<Chunk<'a>>,
-    // Stored for trailer detection in downstream task T04 (design §4.4, §4.5).
-    #[allow(dead_code)]
-    trailer_len: usize,
+    trailing: &'a [u8],
 }
 
 /// Parses a WebP byte stream.
@@ -71,7 +69,7 @@ pub fn parse(data: &[u8]) -> Result<Webp<'_>, CoreError> {
 
     Ok(Webp {
         chunks,
-        trailer_len: data.len() - riff_end,
+        trailing: &data[riff_end..],
     })
 }
 
@@ -97,16 +95,18 @@ impl<'a> Webp<'a> {
             .collect()
     }
 
-    #[cfg(test)]
-    pub(crate) fn trailer_len(&self) -> usize {
-        self.trailer_len
+    /// The bytes past the RIFF size. [`strip`] never writes them.
+    pub fn trailing(&self) -> &'a [u8] {
+        self.trailing
     }
 }
 
-/// Strips metadata chunks from the WebP and appends a single `EXIF` chunk at the end if `kept_exif` is given.
+/// Strips metadata chunks from the WebP. When the file has `VP8X` and an
+/// `EXIF` chunk and `kept_exif` is given, appends one `EXIF` chunk holding it
+/// after every kept chunk.
 pub fn strip(webp: &Webp<'_>, kept_exif: Option<&[u8]>) -> Vec<u8> {
     let has_vp8x = webp.chunks.iter().any(|c| &c.id == b"VP8X");
-    let will_write_exif = kept_exif.is_some() && has_vp8x;
+    let will_write_exif = kept_exif.is_some() && has_vp8x && webp.exif().is_some();
 
     let mut body = b"WEBP".to_vec();
 
@@ -223,13 +223,27 @@ mod tests {
 
     #[test]
     fn test_no_vp8x_does_not_write_kept_exif() {
-        // WebP without VP8X (e.g. simple lossy VP8)
+        // WebP without VP8X (e.g. simple lossy VP8), carrying an EXIF chunk
+        // that the format does not allow there
         let vp8 = make_chunk(b"VP8 ", &[0; 10]);
-        let data = build_riff(&[vp8], &[]);
+        let exif = make_chunk(b"EXIF", b"II*\0ORIG");
+        let data = build_riff(&[vp8, exif], &[]);
 
         let parsed = parse(&data).expect("should parse");
         let stripped = strip(&parsed, Some(b"II*\0KEPT"));
         assert!(!stripped.windows(4).any(|w| w == b"EXIF"));
+    }
+
+    #[test]
+    fn test_no_original_exif_does_not_write_kept_exif() {
+        let vp8x = make_chunk(b"VP8X", &[0u8; 10]);
+        let vp8l = make_chunk(b"VP8L", &[0xAA; 10]);
+        let data = build_riff(&[vp8x, vp8l], &[]);
+
+        let parsed = parse(&data).expect("should parse");
+        let stripped = strip(&parsed, Some(b"II*\0KEPT"));
+        assert!(!stripped.windows(4).any(|w| w == b"EXIF"));
+        assert_eq!(stripped[20] & FLAG_EXIF, 0);
     }
 
     #[test]
@@ -293,7 +307,7 @@ mod tests {
         let data = build_riff(&[vp8], trailer);
 
         let parsed = parse(&data).expect("should parse");
-        assert_eq!(parsed.trailer_len(), trailer.len());
+        assert_eq!(parsed.trailing(), trailer);
 
         let stripped = strip(&parsed, None);
         assert!(!stripped.windows(trailer.len()).any(|w| w == trailer));

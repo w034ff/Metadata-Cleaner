@@ -21,9 +21,7 @@ struct Chunk<'a> {
 #[derive(Debug)]
 pub struct Png<'a> {
     chunks: Vec<Chunk<'a>>,
-    // Stored for trailer detection in downstream task T04 (design §4.3, §4.5).
-    #[allow(dead_code)]
-    trailer_len: usize,
+    trailing: &'a [u8],
 }
 
 /// Parses a PNG byte stream.
@@ -72,7 +70,7 @@ pub fn parse(data: &[u8]) -> Result<Png<'_>, CoreError> {
 
     Ok(Png {
         chunks,
-        trailer_len: data.len() - pos,
+        trailing: &data[pos..],
     })
 }
 
@@ -96,9 +94,9 @@ impl<'a> Png<'a> {
             .collect()
     }
 
-    #[cfg(test)]
-    pub(crate) fn trailer_len(&self) -> usize {
-        self.trailer_len
+    /// The bytes after IEND. [`strip`] never writes them.
+    pub fn trailing(&self) -> &'a [u8] {
+        self.trailing
     }
 }
 
@@ -236,7 +234,7 @@ mod tests {
         let trailer = b"EXTRA_TRAILER_BYTES";
         let png_data = minimal_png(&[], trailer);
         let parsed = parse(&png_data).expect("should parse");
-        assert_eq!(parsed.trailer_len(), trailer.len());
+        assert_eq!(parsed.trailing(), trailer);
 
         let stripped = strip(&parsed, None);
         assert!(!stripped.windows(trailer.len()).any(|w| w == trailer));

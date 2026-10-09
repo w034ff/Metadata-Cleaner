@@ -32,9 +32,7 @@ impl<'a> Segment<'a> {
 #[derive(Debug)]
 pub struct Jpeg<'a> {
     segments: Vec<Segment<'a>>,
-    // Stored for trailer detection in downstream task T04 (design §4.2, §4.5).
-    #[allow(dead_code)]
-    trailer_len: usize,
+    trailing: &'a [u8],
 }
 
 /// Parses a JPEG byte stream.
@@ -70,7 +68,7 @@ pub fn parse(data: &[u8]) -> Result<Jpeg<'_>, CoreError> {
                 // EOI (End of Image)
                 return Ok(Jpeg {
                     segments,
-                    trailer_len: data.len() - pos,
+                    trailing: &data[pos..],
                 });
             }
             0x01 | 0xD0..=0xD7 => {
@@ -141,9 +139,9 @@ impl<'a> Jpeg<'a> {
             .collect()
     }
 
-    #[cfg(test)]
-    pub(crate) fn trailer_len(&self) -> usize {
-        self.trailer_len
+    /// The bytes after EOI, such as an MPF image or a motion photo's video. [`strip`] never writes them.
+    pub fn trailing(&self) -> &'a [u8] {
+        self.trailing
     }
 }
 
@@ -402,7 +400,7 @@ mod tests {
         let trailer = b"EXTRA_DATA_AFTER_EOI";
         let data = minimal_jpeg(&[], trailer);
         let parsed = parse(&data).unwrap();
-        assert_eq!(parsed.trailer_len(), trailer.len());
+        assert_eq!(parsed.trailing(), trailer);
 
         let stripped = strip(&parsed, None);
         assert!(!stripped.windows(trailer.len()).any(|w| w == trailer));
