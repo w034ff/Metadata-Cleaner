@@ -140,4 +140,15 @@ export const en: Translations = {
     title: "Error",
     dismiss: "Dismiss",
   },
+  about: {
+    title: "About this app",
+    version: "Version {version}",
+    loadFailed: "Could not get the version",
+    appLicense: "License of this app (MIT)",
+    showThirdPartyLicenses: "Show third-party licenses",
+    hideThirdPartyLicenses: "Hide third-party licenses",
+    loadingLicenses: "Loading licenses…",
+    viewLicenseText: "Show license text",
+    close: "Close",
+  },
 };

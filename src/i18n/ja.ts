@@ -139,6 +139,17 @@ export const ja = {
     title: "エラー",
     dismiss: "閉じる",
   },
+  about: {
+    title: "このアプリについて",
+    version: "バージョン {version}",
+    loadFailed: "バージョンを取得できませんでした",
+    appLicense: "このアプリのライセンス（MIT）",
+    showThirdPartyLicenses: "第三者ライセンスを表示",
+    hideThirdPartyLicenses: "第三者ライセンスを隠す",
+    loadingLicenses: "ライセンス一覧を読み込み中…",
+    viewLicenseText: "ライセンス本文を表示",
+    close: "閉じる",
+  },
 };
 
 export type Translations = typeof ja;
