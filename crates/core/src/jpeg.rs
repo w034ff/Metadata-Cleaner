@@ -143,6 +143,47 @@ impl<'a> Jpeg<'a> {
     pub fn trailing(&self) -> &'a [u8] {
         self.trailing
     }
+
+    /// Returns metadata segments (APPn and COM) in file order as `(marker, payload)`.
+    pub fn dropped_segments(&self) -> Vec<(u8, &'a [u8])> {
+        self.segments
+            .iter()
+            .filter(|s| is_metadata_marker(s.marker))
+            .map(|s| (s.marker, s.payload()))
+            .collect()
+    }
+
+    /// Returns payloads of all APP2 ICC profile segments.
+    pub fn icc_payloads(&self) -> Vec<&'a [u8]> {
+        self.segments
+            .iter()
+            .filter(|s| s.marker == 0xE2 && s.payload().starts_with(ICC_PREFIX))
+            .map(|s| s.payload())
+            .collect()
+    }
+
+    /// Returns the payload of the first APP0 JFIF segment, if present.
+    pub fn jfif_payload(&self) -> Option<&'a [u8]> {
+        self.segments
+            .iter()
+            .find(|s| s.marker == 0xE0 && s.payload().starts_with(JFIF_PREFIX))
+            .map(|s| s.payload())
+    }
+
+    /// Returns `(width, height)` read from the first SOF segment, if present.
+    pub fn dimensions(&self) -> Option<(u32, u32)> {
+        for s in &self.segments {
+            if (0xC0..=0xCF).contains(&s.marker) && !matches!(s.marker, 0xC4 | 0xC8 | 0xCC) {
+                let p = s.payload();
+                if p.len() >= 5 {
+                    let h = u16::from_be_bytes([p[1], p[2]]) as u32;
+                    let w = u16::from_be_bytes([p[3], p[4]]) as u32;
+                    return Some((w, h));
+                }
+            }
+        }
+        None
+    }
 }
 
 fn is_metadata_marker(marker: u8) -> bool {
