@@ -98,6 +98,31 @@ impl<'a> Png<'a> {
     pub fn trailing(&self) -> &'a [u8] {
         self.trailing
     }
+
+    /// Returns dropped metadata chunks in file order as `(kind, data)`.
+    pub fn dropped_chunks(&self) -> Vec<([u8; 4], &'a [u8])> {
+        self.chunks
+            .iter()
+            .filter(|c| !KEEP_CHUNKS.contains(&&c.kind))
+            .map(|c| (c.kind, c.data))
+            .collect()
+    }
+
+    /// Returns the data payload of the `iCCP` chunk, if present.
+    pub fn iccp(&self) -> Option<&'a [u8]> {
+        self.chunks
+            .iter()
+            .find(|c| &c.kind == b"iCCP")
+            .map(|c| c.data)
+    }
+
+    /// Returns the data payload of the `pHYs` chunk, if present.
+    pub fn phys(&self) -> Option<&'a [u8]> {
+        self.chunks
+            .iter()
+            .find(|c| &c.kind == b"pHYs")
+            .map(|c| c.data)
+    }
 }
 
 /// Strips metadata chunks from the PNG and replaces the first `eXIf` chunk if `kept_exif` is given.
