@@ -7,15 +7,8 @@ use std::path::{Path, PathBuf};
 
 /// Fixture files excluded from cleaning verification because they cannot be
 /// cleaned by design (design §4.6, §11.1).
-const EXCLUDED_FIXTURES: &[&str] = &[
-    "corrupt.jpg",
-    "corrupt.pdf",
-    "corrupt.png",
-    "corrupt.webp",
-    "encrypted.pdf",
-    "restricted.pdf",
-    "signed.pdf",
-];
+/// Every `corrupt.*` file is excluded as well (see [`is_excluded`]).
+const EXCLUDED_FIXTURES: &[&str] = &["encrypted.pdf", "restricted.pdf", "signed.pdf"];
 
 const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../core/tests/fixtures");
 

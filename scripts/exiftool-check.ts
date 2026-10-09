@@ -7,48 +7,21 @@ import path from "node:path";
 
 const MAX_EXIFTOOL_BUFFER_BYTES = 64 * 1024 * 1024;
 
-// Allowed metadata groups and tags according to design §4.2–§4.6:
-//
-// 1. Whole groups allowed:
-//    - ExifTool: ExifTool version and tool metadata (ExifTool:Warning and
-//      ExifTool:Error are rejected separately per T15 specification §2).
-//    - System: Filesystem attributes (file name, size, modification date).
-//    - Composite: Derived values computed by ExifTool (aspect ratio, megapixels).
-//    - ICC_Profile, ICC-header, ICC-view, ICC-meas (ICC-*): Color profiles
-//      preserved per design §4.2 (JPEG), §4.3 (PNG), §4.4 (WebP).
-//
-// 2. Groups with restricted tags:
-//    - File: FileType, FileTypeExtension, MIMEType, ExifByteOrder, ImageWidth,
-//      ImageHeight, EncodingProcess, BitsPerSample, ColorComponents,
-//      YCbCrSubSampling (basic file info; JPEG COM appears as File:Comment so
-//      the whole group cannot be allowed).
-//    - IFD0: Orientation, XResolution, YResolution, ResolutionUnit (design §4.5:
-//      EXIF with only kept information; no GPS, dates, devices, or authors).
-//    - JFIF: JFIFVersion, ResolutionUnit, XResolution, YResolution (design §4.2:
-//      JFIF density preserved; thumbnails are stripped).
-//    - Adobe: DCTEncodeVersion, APP14Flags0, APP14Flags1, ColorTransform (design §4.2:
-//      APP14 color transform preserved for CMYK).
-//    - PNG: ImageWidth, ImageHeight, BitDepth, ColorType, Compression, Filter,
-//      Interlace (IHDR), AnimationFrames, AnimationPlays (acTL), Palette (PLTE),
-//      BackgroundColor (bKGD), Gamma (gAMA), ProfileName (iCCP), SignificantBits (sBIT),
-//      SRGBRendering (sRGB), Transparency (tRNS), WhitePointX, WhitePointY, RedX,
-//      RedY, GreenX, GreenY, BlueX, BlueY (cHRM) (design §4.3: basic image, animation,
-//      and color chunks; text chunks, tIME, and eXIf are stripped).
-//    - PNG-pHYs: PixelsPerUnitX, PixelsPerUnitY, PixelUnits (design §4.3: pHYs pixel density).
-//    - RIFF: ImageWidth, ImageHeight (VP8, VP8L, VP8X), VP8Version, HorizontalScale,
-//      VerticalScale (VP8), WebP_Flags (VP8X), AlphaPreprocessing, AlphaFiltering,
-//      AlphaCompression (ALPH), BackgroundColor, AnimationLoopCount (ANIM), Duration (ANMF)
-//      (design §4.4: basic WebP, alpha, and animation chunks; EXIF and XMP are stripped).
-//    - PDF: PDFVersion, Linearized, PageCount (design §4.6: basic PDF structure;
-//      /Info and /Metadata are stripped).
+// What may remain in a cleaned file: only what design §4.2–§4.6 keeps. Each
+// group says which kept item its tags come from.
 const ALLOWED: {
   readonly wholeGroups: readonly string[];
   readonly wholeGroupPrefixes: readonly string[];
   readonly restrictedGroups: Readonly<Record<string, readonly string[]>>;
 } = {
+  // ExifTool's own fields, the file system, values derived from the other
+  // groups, and the ICC profile, which is kept byte for byte (§4.2–§4.4).
+  // ExifTool:Warning and ExifTool:Error are rejected before this list.
   wholeGroups: ["ExifTool", "System", "Composite", "ICC_Profile"],
   wholeGroupPrefixes: ["ICC-"],
   restrictedGroups: {
+    // Basic file properties. JPEG COM shows as File:Comment, so the group
+    // is not allowed as a whole.
     File: [
       "FileType",
       "FileTypeExtension",
@@ -61,9 +34,14 @@ const ALLOWED: {
       "ColorComponents",
       "YCbCrSubSampling",
     ],
+    // The EXIF that §4.5 keeps.
     IFD0: ["Orientation", "XResolution", "YResolution", "ResolutionUnit"],
+    // JFIF without its thumbnail (§4.2).
     JFIF: ["JFIFVersion", "ResolutionUnit", "XResolution", "YResolution"],
+    // APP14 for CMYK and YCCK (§4.2).
     Adobe: ["DCTEncodeVersion", "APP14Flags0", "APP14Flags1", "ColorTransform"],
+    // IHDR, acTL, PLTE, bKGD, gAMA, iCCP, sBIT, sRGB, tRNS, cHRM and cICP
+    // (§4.3). ExifTool 12.76 has no tags for mDCV and cLLI.
     PNG: [
       "ImageWidth",
       "ImageHeight",
@@ -89,8 +67,14 @@ const ALLOWED: {
       "GreenY",
       "BlueX",
       "BlueY",
+      "ColorPrimaries",
+      "TransferCharacteristics",
+      "MatrixCoefficients",
+      "VideoFullRangeFlag",
     ],
+    // pHYs (§4.3).
     "PNG-pHYs": ["PixelsPerUnitX", "PixelsPerUnitY", "PixelUnits"],
+    // VP8, VP8L, VP8X, ALPH, ANIM and ANMF (§4.4).
     RIFF: [
       "ImageWidth",
       "ImageHeight",
@@ -105,6 +89,7 @@ const ALLOWED: {
       "AnimationLoopCount",
       "Duration",
     ],
+    // The file structure only; /Info and /Metadata are removed (§4.6).
     PDF: ["PDFVersion", "Linearized", "PageCount"],
   },
 };
