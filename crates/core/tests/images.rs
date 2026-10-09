@@ -14,23 +14,34 @@ const KEPT_EXIF: [u8; 26] = [
     0x00, 0x00, 0x00, 0x00, // Next IFD = 0
 ];
 
+// The example's `main` is unused when it is compiled as a module of this test.
+#[allow(dead_code)]
+#[path = "../examples/gen_fixtures.rs"]
+mod gen_fixtures;
+
 const FICTIONAL_VALUES: &[&str] = &[
-    "Example Author",
-    "Example Editor",
-    "Example Software",
-    "Example Camera Make",
-    "Example Camera Model",
-    "EX-12345678",
-    "2026:01:02 03:04:05",
-    "Example Comment",
-    "Example Title",
-    "Example Subject",
-    "Example Keywords",
-    "Copyright (C) 2026 Example Author",
-    "Example City",
-    "Example State",
-    "Example Country",
+    gen_fixtures::AUTHOR,
+    gen_fixtures::EDITOR,
+    gen_fixtures::SOFTWARE,
+    gen_fixtures::CAMERA_MAKE,
+    gen_fixtures::CAMERA_MODEL,
+    gen_fixtures::SERIAL_NUMBER,
+    gen_fixtures::DATE_TIME,
+    gen_fixtures::COMMENT,
+    gen_fixtures::TITLE,
+    gen_fixtures::SUBJECT,
+    gen_fixtures::KEYWORDS,
+    gen_fixtures::COPYRIGHT,
+    gen_fixtures::CITY,
+    gen_fixtures::STATE,
+    gen_fixtures::COUNTRY,
 ];
+
+const XMP_NAMESPACE: &[u8] = b"http://ns.adobe.com/xap/1.0/";
+
+fn contains(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
+}
 
 fn fixture_bytes(name: &str) -> Vec<u8> {
     let path = format!("{}/tests/fixtures/{}", env!("CARGO_MANIFEST_DIR"), name);
@@ -98,11 +109,8 @@ fn test_full_jpg_cleaning() {
     assert_eq!(reparsed.exif(), Some(KEPT_EXIF.as_slice()));
 
     // XMP, IPTC (Photoshop APP13 0xED), MPF, COM (0xFE), trailer stripped
-    assert!(
-        !stripped
-            .windows(29)
-            .any(|w| w == b"http://ns.adobe.com/xap/1.0/")
-    );
+    assert!(contains(&input, XMP_NAMESPACE));
+    assert!(!contains(&stripped, XMP_NAMESPACE));
     assert!(!stripped.windows(14).any(|w| w == b"Photoshop 3.0\0"));
     assert!(!stripped.windows(4).any(|w| w == b"MPF\0"));
     // File must end with EOI marker (0xFF, 0xD9) without trailing bytes
@@ -129,11 +137,8 @@ fn test_progressive_jpg_cleaning() {
     assert_eq!(reparsed.image_segments(), parsed.image_segments());
 
     // Intermediate COM and XMP segments stripped
-    assert!(
-        !stripped
-            .windows(29)
-            .any(|w| w == b"http://ns.adobe.com/xap/1.0/")
-    );
+    assert!(contains(&input, XMP_NAMESPACE));
+    assert!(!contains(&stripped, XMP_NAMESPACE));
     for &val in FICTIONAL_VALUES {
         assert!(!stripped.windows(val.len()).any(|w| w == val.as_bytes()));
     }
