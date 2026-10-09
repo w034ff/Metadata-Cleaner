@@ -32,7 +32,8 @@ jobs:
             libxdo-dev \
             libssl-dev \
             libayatana-appindicator3-dev \
-            librsvg2-dev
+            librsvg2-dev \
+            libimage-exiftool-perl
 
       # Installs the version and components pinned in rust-toolchain.toml.
       - name: Setup Rust toolchain
@@ -95,6 +96,12 @@ jobs:
 
       - name: PDF Performance Test (Release)
         run: cargo test -p mcleaner-worker --release --test pdf_performance --locked
+
+      - name: ExifTool Check
+        if: runner.os == 'Linux'
+        run: |
+          cargo run -p mcleaner-worker --example clean_fixtures --locked -- "$RUNNER_TEMP/cleaned"
+          npm run exiftool:check -- "$RUNNER_TEMP/cleaned"
 
       # Both checks pin their target platforms (deny.toml, about.toml), so the
       # result does not depend on the runner OS and one runner is enough.

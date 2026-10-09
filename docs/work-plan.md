@@ -223,7 +223,7 @@ PDF Converter の work-plan §2.4 と同じ。報告を書き終えたら、最�
 ### T07 ワーカーとワーカーの管理
 
 内容:
-- `crates/worker` の `protocol.rs`・`server.rs`・`client.rs`（design.md §5.1）。T01 の `Ping` を、`Inspect` と `Clean` に置き換える。
+- `crates/worker` の `protocol.rs`・`server.rs`・`client.rs`（design.md §5.1）。`Inspect` と `Clean` を足す。T01 の `Ping` は残す（一時的な `check_worker` が T11 まで使う）。
 - `src-tauri/src/worker_pool.rs`（§5.2）。PDF Converter のものを写す。テスト用の要求 `CrashForTest`、`HangForTest` は `test-hooks` 機能のときだけ有効にする（PDF Converter と同じ）。
 - `ci.yml` に、`test-hooks` なしでワーカーのテストを実行する手順を加える。
 
