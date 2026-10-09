@@ -10,6 +10,9 @@ use mcleaner_core::report::{
 use metadata_cleaner_lib::commands::AddSource;
 use metadata_cleaner_lib::error::{ErrorCode, IpcError};
 use metadata_cleaner_lib::items::{AddResult, FileItem, ItemsDropped, Skipped};
+use metadata_cleaner_lib::jobs::{
+    JobFinishedPayload, JobItemPayload, JobItemStatus, JobProgressPayload,
+};
 use ts_rs::{Config, TS};
 
 #[test]
@@ -34,4 +37,8 @@ fn export_typescript_bindings() {
     Skipped::export_all(&cfg).expect("exporting Skipped");
     AddResult::export_all(&cfg).expect("exporting AddResult");
     ItemsDropped::export_all(&cfg).expect("exporting ItemsDropped");
+    JobItemStatus::export_all(&cfg).expect("exporting JobItemStatus");
+    JobProgressPayload::export_all(&cfg).expect("exporting JobProgressPayload");
+    JobItemPayload::export_all(&cfg).expect("exporting JobItemPayload");
+    JobFinishedPayload::export_all(&cfg).expect("exporting JobFinishedPayload");
 }

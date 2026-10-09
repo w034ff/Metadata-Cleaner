@@ -15,6 +15,10 @@ use crate::protocol::{Request, Response, read_message, write_message};
 /// fail and end the worker, which the main process reports as a crash.
 pub const WORKER_MEMORY_LIMIT: u64 = 2 * 1024 * 1024 * 1024;
 
+/// Name of a PDF file that causes the worker to abort for testing (design §11.3).
+#[cfg(feature = "test-hooks")]
+pub const CRASH_ON_OPEN_FILE_NAME: &str = "crash-on-open-for-test.pdf";
+
 /// Runs the worker loop.
 ///
 /// # Errors
@@ -91,6 +95,10 @@ fn handle(request: Request) -> (Response, Vec<u8>) {
             Vec::new(),
         ),
         Request::Inspect { path, details } => {
+            #[cfg(feature = "test-hooks")]
+            if path.file_name().and_then(|n| n.to_str()) == Some(CRASH_ON_OPEN_FILE_NAME) {
+                std::process::abort();
+            }
             let bytes = match read_pdf_file(&path) {
                 Ok(b) => b,
                 Err(err) => return (Response::from(err), Vec::new()),
@@ -132,6 +140,10 @@ fn handle(request: Request) -> (Response, Vec<u8>) {
             )
         }
         Request::Clean { path } => {
+            #[cfg(feature = "test-hooks")]
+            if path.file_name().and_then(|n| n.to_str()) == Some(CRASH_ON_OPEN_FILE_NAME) {
+                std::process::abort();
+            }
             let bytes = match read_pdf_file(&path) {
                 Ok(b) => b,
                 Err(err) => return (Response::from(err), Vec::new()),
@@ -232,5 +244,11 @@ mod tests {
                 Vec::new()
             )
         );
+    }
+
+    #[cfg(feature = "test-hooks")]
+    #[test]
+    fn crash_on_open_file_name_constant() {
+        assert_eq!(CRASH_ON_OPEN_FILE_NAME, "crash-on-open-for-test.pdf");
     }
 }

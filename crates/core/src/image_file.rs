@@ -67,6 +67,52 @@ pub fn clean(bytes: &[u8]) -> Result<Vec<u8>, CoreError> {
     }
 }
 
+/// Verifies that cleaning succeeded without leaving metadata or modifying image data (design §6.3).
+///
+/// Returns `true` if and only if:
+/// 1. `inspect(output)` succeeds and reports no metadata kinds (`kinds` is empty).
+/// 2. Image stream content is identical between `input` and `output`:
+///    - JPEG: `image_segments()` match
+///    - PNG: `image_chunks()` match
+///    - WebP: `image_chunks()` match
+pub fn verify(input: &[u8], output: &[u8]) -> bool {
+    let Ok(insp) = inspect(output) else {
+        return false;
+    };
+    if !insp.kinds.is_empty() {
+        return false;
+    }
+
+    let Ok(input_format) = detect::detect(input) else {
+        return false;
+    };
+    if input_format != insp.format {
+        return false;
+    }
+
+    match input_format {
+        Format::Jpeg => {
+            let (Ok(in_jpeg), Ok(out_jpeg)) = (jpeg::parse(input), jpeg::parse(output)) else {
+                return false;
+            };
+            in_jpeg.image_segments() == out_jpeg.image_segments()
+        }
+        Format::Png => {
+            let (Ok(in_png), Ok(out_png)) = (png::parse(input), png::parse(output)) else {
+                return false;
+            };
+            in_png.image_chunks() == out_png.image_chunks()
+        }
+        Format::Webp => {
+            let (Ok(in_webp), Ok(out_webp)) = (webp::parse(input), webp::parse(output)) else {
+                return false;
+            };
+            in_webp.image_chunks() == out_webp.image_chunks()
+        }
+        Format::Pdf => false,
+    }
+}
+
 type RawEntriesAndKept = (Vec<(MetadataKind, DetailEntry)>, Vec<KeptInfo>);
 
 /// Collects all metadata entries in file order and extracts kept metadata.
@@ -1727,5 +1773,23 @@ mod tests {
             xmp_entry.value,
             DetailValue::Bytes(xmp_payload.len() as u64)
         );
+    }
+
+    #[test]
+    fn test_verify_clean_full_jpg_true_and_uncleaned_false() {
+        let full_jpg = std::fs::read("tests/fixtures/full.jpg").expect("read full.jpg");
+        let cleaned = clean(&full_jpg).expect("clean full.jpg");
+        assert!(verify(&full_jpg, &cleaned));
+        assert!(!verify(&full_jpg, &full_jpg));
+
+        let full_png = std::fs::read("tests/fixtures/full.png").expect("read full.png");
+        let cleaned_png = clean(&full_png).expect("clean full.png");
+        assert!(verify(&full_png, &cleaned_png));
+        assert!(!verify(&full_png, &full_png));
+
+        let full_webp = std::fs::read("tests/fixtures/full.webp").expect("read full.webp");
+        let cleaned_webp = clean(&full_webp).expect("clean full.webp");
+        assert!(verify(&full_webp, &cleaned_webp));
+        assert!(!verify(&full_webp, &full_webp));
     }
 }

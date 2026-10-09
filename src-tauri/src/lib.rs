@@ -11,6 +11,7 @@ use tauri::{DragDropEvent, Emitter, Manager, WindowEvent};
 pub mod commands;
 pub mod error;
 pub mod items;
+pub mod jobs;
 pub mod worker_pool;
 
 use items::ItemTable;
@@ -28,6 +29,8 @@ pub struct AppState {
     pub pool: WorkerPool,
     /// Flag indicating whether a cleaning job is currently executing (design §6.1, §7.1).
     pub is_running: Arc<AtomicBool>,
+    /// Flag indicating whether a cancellation has been requested (design §6.5, §7.1).
+    pub cancel_flag: Arc<AtomicBool>,
     /// The folder cleaned files are saved in (design §6.5). Set by
     /// `pick_output_dir` and the restored settings, read by `start_clean`.
     pub output_dir: Arc<Mutex<Option<PathBuf>>>,
@@ -40,6 +43,7 @@ impl AppState {
             items: Arc::new(ItemTable::new()),
             pool,
             is_running: Arc::new(AtomicBool::new(false)),
+            cancel_flag: Arc::new(AtomicBool::new(false)),
             output_dir: Arc::new(Mutex::new(None)),
         }
     }
@@ -66,6 +70,8 @@ pub fn run() {
             commands::add_files,
             commands::remove_items,
             commands::get_details,
+            commands::start_clean,
+            commands::cancel_job,
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::DragDrop(DragDropEvent::Drop { paths, .. }) = event {
