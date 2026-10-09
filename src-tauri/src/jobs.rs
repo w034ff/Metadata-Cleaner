@@ -142,12 +142,7 @@ pub fn list_existing_files(dir: &Path) -> Result<HashSet<String>, IpcError> {
     if !dir.exists() {
         return Ok(set);
     }
-    let entries = fs::read_dir(dir).map_err(|e| {
-        IpcError::new(
-            ErrorCode::WriteFailed,
-            format!("could not read output directory: {e}"),
-        )
-    })?;
+    let entries = fs::read_dir(dir).map_err(|_| IpcError::from_code(ErrorCode::WriteFailed))?;
     for entry in entries.flatten() {
         set.insert(entry.file_name().to_string_lossy().to_string());
     }
@@ -201,6 +196,9 @@ fn is_same_path(p1: &Path, p2: &Path) -> bool {
     }
 }
 
+/// Write errors carry no detail: the I/O and tempfile messages name the
+/// folder, and the frontend never sees paths (design §1).
+///
 /// Saves file bytes atomically into `output_dir` using a dot-prefixed temporary file
 /// and `persist_noclobber` (design §6.4, §6.5).
 ///
@@ -212,13 +210,13 @@ pub fn save_atomic(
     bytes: &[u8],
     used_names_lower: &Mutex<HashSet<String>>,
 ) -> Result<String, IpcError> {
-    let mut temp = create_output_temp(output_dir)
-        .map_err(|e| IpcError::new(ErrorCode::WriteFailed, e.to_string()))?;
+    let mut temp =
+        create_output_temp(output_dir).map_err(|_| IpcError::from_code(ErrorCode::WriteFailed))?;
 
     temp.write_all(bytes)
-        .map_err(|e| IpcError::new(ErrorCode::WriteFailed, e.to_string()))?;
+        .map_err(|_| IpcError::from_code(ErrorCode::WriteFailed))?;
     temp.flush()
-        .map_err(|e| IpcError::new(ErrorCode::WriteFailed, e.to_string()))?;
+        .map_err(|_| IpcError::from_code(ErrorCode::WriteFailed))?;
 
     let (stem, ext) = split_stem_and_ext(initial_output_name);
     let mut candidate = initial_output_name.to_string();
@@ -230,7 +228,7 @@ pub fn save_atomic(
             Ok(_) => {
                 let mut used = used_names_lower
                     .lock()
-                    .expect("used_names_lower mutex poisoned");
+                    .expect("the used names are never locked across a panic");
                 used.insert(candidate.to_lowercase());
                 return Ok(candidate);
             }
@@ -239,7 +237,7 @@ pub fn save_atomic(
                     temp = persist_err.file;
                     let mut used = used_names_lower
                         .lock()
-                        .expect("used_names_lower mutex poisoned");
+                        .expect("the used names are never locked across a panic");
                     loop {
                         suffix_num += 1;
                         let next_candidate = if ext.is_empty() {
@@ -256,10 +254,7 @@ pub fn save_atomic(
                         }
                     }
                 } else {
-                    return Err(IpcError::new(
-                        ErrorCode::WriteFailed,
-                        persist_err.error.to_string(),
-                    ));
+                    return Err(IpcError::from_code(ErrorCode::WriteFailed));
                 }
             }
         }
@@ -621,7 +616,8 @@ where
     FItem: Fn(JobItemPayload) + Send + Sync + 'static,
     FFin: FnOnce(JobFinishedPayload) + Send + Sync + 'static,
 {
-    // 1. 処理中チェック
+    // The checks run in the order of design §6.3 and §6.5; any failure
+    // lowers the running flag again and starts nothing.
     if state
         .is_running
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
@@ -631,9 +627,11 @@ where
     }
     state.cancel_flag.store(false, Ordering::SeqCst);
 
-    // 2. 保存先チェック
     let output_dir = {
-        let lock = state.output_dir.lock().expect("output_dir lock");
+        let lock = state
+            .output_dir
+            .lock()
+            .expect("the output folder is never locked across a panic");
         match lock.clone() {
             Some(dir) => dir,
             None => {
@@ -643,13 +641,11 @@ where
         }
     };
 
-    // 3. 保存先に書けるかチェック
     if let Err(err) = check_output_dir(&output_dir) {
         state.is_running.store(false, Ordering::SeqCst);
         return Err(err);
     }
 
-    // 4. ID チェック
     for &id in ids {
         if state.items.get(id).is_none() {
             state.is_running.store(false, Ordering::SeqCst);
@@ -657,7 +653,7 @@ where
         }
     }
 
-    // 5. 対象チェック (エラーの項目は除外、対象が0件ならInvalidParams)
+    // Items that failed when added are not cleaned (design §6.3).
     let valid_count = ids
         .iter()
         .filter_map(|&id| state.items.get(id))
@@ -668,7 +664,6 @@ where
         return Err(IpcError::from_code(ErrorCode::InvalidParams));
     }
 
-    // 6. 同じフォルダチェック
     let output_canonical = match fs::canonicalize(&output_dir) {
         Ok(c) => c,
         Err(_) => {
@@ -688,13 +683,11 @@ where
         }
     }
 
-    // 7. 出力名決定可能性のチェック（list_existing_files）
     if let Err(err) = list_existing_files(&output_dir) {
         state.is_running.store(false, Ordering::SeqCst);
         return Err(err);
     }
 
-    // 8. 始める
     let state_clone = state.clone();
     let ids_owned = ids.to_vec();
 
