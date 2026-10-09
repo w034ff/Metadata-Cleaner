@@ -1,11 +1,12 @@
 //! Format detection and file size checks (design §4.1).
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::error::CoreError;
 
 /// Supported file formats.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum Format {
     Jpeg,
