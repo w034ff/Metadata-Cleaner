@@ -1,0 +1,84 @@
+.details-aside {
+  flex: 1 1 300px;
+  max-width: 340px;
+  min-width: 300px;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.details-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.details-file-name {
+  font-size: 15px;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.details-error-text {
+  font-size: 13px;
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.details-status-ok {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-success);
+}
+
+.details-status-failed {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-error);
+}
+
+.details-status-cancelled {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.details-section-divider {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.details-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.details-list li {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.details-dl {
+  margin: 0;
+}
+
+.details-dl dt {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.details-dl dd {
+  margin: 0 0 8px;
+  font-size: 13px;
+}

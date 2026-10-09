@@ -67,4 +67,112 @@ describe("appReducer", () => {
     expect(state.outputDir).toEqual({ dirLabel: "new_dir" });
     expect(state.job.finished).toBe(null);
   });
+
+  it("handles item selection and toggling off", () => {
+    let state = createInitialAppState();
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+    expect(state.selectedId).toBe(null);
+
+    // Select item 1
+    state = appReducer(state, { type: "SELECT_ITEM", id: 1 });
+    expect(state.selectedId).toBe(1);
+
+    // Select item 1 again -> toggles off
+    state = appReducer(state, { type: "SELECT_ITEM", id: 1 });
+    expect(state.selectedId).toBe(null);
+
+    // Select item 1 again, then pass null -> deselects
+    state = appReducer(state, { type: "SELECT_ITEM", id: 1 });
+    expect(state.selectedId).toBe(1);
+    state = appReducer(state, { type: "SELECT_ITEM", id: null });
+    expect(state.selectedId).toBe(null);
+  });
+
+  it("handles details loading and drops stale responses", () => {
+    let state = createInitialAppState();
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+
+    // Start request 1
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_START",
+      id: 1,
+      requestId: 1,
+    });
+    expect(state.detailsRequestId).toBe(1);
+    expect(state.isLoadingDetails).toBe(true);
+
+    // Switch to request 2
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_START",
+      id: 2,
+      requestId: 2,
+    });
+    expect(state.detailsRequestId).toBe(2);
+
+    // Old response for request 1 arrives -> ignored
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_SUCCESS",
+      requestId: 1,
+      details: { groups: [], kept: [], truncated: false },
+    });
+    expect(state.details).toBe(null);
+
+    // Response for request 2 arrives -> accepted
+    const details = { groups: [], kept: [], truncated: false };
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_SUCCESS",
+      requestId: 2,
+      details,
+    });
+    expect(state.details).toEqual(details);
+    expect(state.isLoadingDetails).toBe(false);
+  });
+
+  it("drops an answer that arrives after the selection changed", () => {
+    const details = { groups: [], kept: [], truncated: false };
+    let state = createInitialAppState();
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+    state = appReducer(state, { type: "SELECT_ITEM", id: sampleItem.id });
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_START",
+      id: sampleItem.id,
+      requestId: 1,
+    });
+
+    // Deselected while the answer for request 1 was still on its way.
+    state = appReducer(state, { type: "SELECT_ITEM", id: null });
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_SUCCESS",
+      requestId: 1,
+      details,
+    });
+    expect(state.details).toBe(null);
+
+    // Another row selected that needs no request (e.g. an error row).
+    state = appReducer(state, { type: "SELECT_ITEM", id: sampleItem.id });
+    state = appReducer(state, {
+      type: "FETCH_DETAILS_SUCCESS",
+      requestId: 1,
+      details,
+    });
+    expect(state.details).toBe(null);
+  });
+
+  it("resets selection when selected item is removed or cleared", () => {
+    let state = createInitialAppState();
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+    state = appReducer(state, { type: "SELECT_ITEM", id: 1 });
+    expect(state.selectedId).toBe(1);
+
+    state = appReducer(state, { type: "REMOVE_ITEMS", ids: [1] });
+    expect(state.selectedId).toBe(null);
+
+    // With clear items
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+    state = appReducer(state, { type: "SELECT_ITEM", id: 1 });
+    expect(state.selectedId).toBe(1);
+
+    state = appReducer(state, { type: "CLEAR_ITEMS" });
+    expect(state.selectedId).toBe(null);
+  });
 });

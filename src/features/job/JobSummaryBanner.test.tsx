@@ -31,7 +31,7 @@ describe("JobSummaryBanner", () => {
 
     const banner = screen.getByRole("status");
     expect(banner).toHaveClass("job-summary-banner-success");
-    expect(banner).toHaveTextContent("終わりました：成功 4 件");
+    expect(banner).toHaveTextContent("保存 4 件");
     expect(banner).toHaveTextContent("✓");
   });
 
@@ -51,9 +51,39 @@ describe("JobSummaryBanner", () => {
 
     const banner = screen.getByRole("status");
     expect(banner).toHaveClass("job-summary-banner-warning");
-    expect(banner).toHaveTextContent(
-      "終わりました：成功 4 件 · 失敗 1 件 · 未処理 1 件",
-    );
+    expect(banner).toHaveTextContent("保存 4 件 · 失敗 1 件 · 未処理 1 件");
     expect(banner).toHaveTextContent("✕");
+  });
+
+  it("includes unreadable count when items have errors and omits it when zero", () => {
+    const stateWithErrors = {
+      ...jaState,
+      items: [
+        {
+          id: 1,
+          name: "corrupt.jpg",
+          format: null,
+          bytes: 100,
+          kinds: [],
+          error: { code: "DecodeFailed" as const, detail: null },
+        },
+      ],
+    };
+
+    render(
+      <AppStateProvider initialState={stateWithErrors}>
+        <JobSummaryBanner
+          finished={{
+            succeeded: 4,
+            failed: 1,
+            unprocessed: 0,
+            cancelled: false,
+          }}
+        />
+      </AppStateProvider>,
+    );
+
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveTextContent("保存 4 件 · 失敗 1 件 · 対象外 1 件");
   });
 });

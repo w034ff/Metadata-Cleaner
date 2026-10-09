@@ -11,14 +11,15 @@ export interface JobSummaryBannerProps {
  * Status banner shown when a cleaning job finishes (mockup BResult.dc.html).
  */
 export function JobSummaryBanner({ finished }: JobSummaryBannerProps) {
-  const { language } = useAppState();
+  const { language, items } = useAppState();
 
   if (finished === null) {
     return null;
   }
 
-  const successful = isJobSuccessful(finished);
-  const text = formatJobSummary(finished, language.language);
+  const unreadableCount = items.filter((it) => it.error !== null).length;
+  const successful = isJobSuccessful(finished, unreadableCount);
+  const text = formatJobSummary(finished, language.language, unreadableCount);
 
   return (
     <div

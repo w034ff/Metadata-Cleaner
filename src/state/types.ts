@@ -1,5 +1,5 @@
 import type { Language } from "../i18n";
-import type { FileItem, OutputDirLabel } from "../ipc";
+import type { Details, FileItem, IpcError, OutputDirLabel } from "../ipc";
 import type { JobAction, JobState } from "./job";
 
 export interface LanguageState {
@@ -19,7 +19,18 @@ export interface AppState {
   items: FileItem[];
   outputDir: OutputDirLabel | null;
   job: JobState;
+  selectedId: number | null;
+  detailsRequestId: number;
+  details: Details | null;
+  detailsError: IpcError | null;
+  isLoadingDetails: boolean;
 }
+
+export type DetailsAction =
+  | { type: "SELECT_ITEM"; id: number | null }
+  | { type: "FETCH_DETAILS_START"; id: number; requestId: number }
+  | { type: "FETCH_DETAILS_SUCCESS"; requestId: number; details: Details }
+  | { type: "FETCH_DETAILS_FAILURE"; requestId: number; error: IpcError };
 
 export type AppAction =
   | LanguageAction
@@ -28,4 +39,5 @@ export type AppAction =
   | { type: "REMOVE_ITEMS"; ids: number[] }
   | { type: "CLEAR_ITEMS" }
   | { type: "SET_OUTPUT_DIR"; outputDir: OutputDirLabel | null }
+  | DetailsAction
   | JobAction;

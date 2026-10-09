@@ -128,4 +128,33 @@ describe("JobFooter", () => {
 
     expect(screen.getByText(/失敗があります/)).toBeInTheDocument();
   });
+
+  it("counts only valid items and disables button when only error items exist", () => {
+    const errorItems: FileItem[] = [
+      {
+        id: 2,
+        name: "corrupt.jpg",
+        format: null,
+        bytes: 100,
+        kinds: [],
+        error: { code: "DecodeFailed", detail: null },
+      },
+    ];
+
+    const state = {
+      ...createInitialAppState("ja"),
+      items: errorItems,
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <JobFooter />
+      </AppStateProvider>,
+    );
+
+    expect(
+      screen.getByText("0 件から情報を消して保存します"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "消して保存" })).toBeDisabled();
+  });
 });
