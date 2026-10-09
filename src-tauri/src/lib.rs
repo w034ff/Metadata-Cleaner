@@ -1,6 +1,7 @@
 //! Application entry point.
 
 pub mod commands;
+pub mod worker_pool;
 
 /// Starts the Tauri application.
 ///

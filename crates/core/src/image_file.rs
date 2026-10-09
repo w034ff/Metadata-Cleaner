@@ -92,7 +92,7 @@ fn collect_jpeg_entries_and_kept(bytes: &[u8]) -> Result<RawEntriesAndKept, Core
     if let Some(tiff) = jpeg.exif()
         && let (Some(orient), _) = exif::parse_kept_info(tiff)
     {
-        kept.push(KeptInfo::Orientation(orient));
+        kept.push(KeptInfo::Orientation { value: orient });
     }
 
     // 2. Kept ColorProfile
@@ -295,7 +295,7 @@ fn collect_png_entries_and_kept(bytes: &[u8]) -> Result<RawEntriesAndKept, CoreE
     if let Some(tiff) = png.exif()
         && let (Some(orient), _) = exif::parse_kept_info(tiff)
     {
-        kept.push(KeptInfo::Orientation(orient));
+        kept.push(KeptInfo::Orientation { value: orient });
     }
 
     // 2. Kept ColorProfile
@@ -438,7 +438,7 @@ fn collect_webp_entries_and_kept(bytes: &[u8]) -> Result<RawEntriesAndKept, Core
     if let Some(tiff) = webp.exif()
         && let (Some(orient), _) = exif::parse_kept_info(tiff)
     {
-        kept.push(KeptInfo::Orientation(orient));
+        kept.push(KeptInfo::Orientation { value: orient });
     }
 
     // 2. Kept ColorProfile
