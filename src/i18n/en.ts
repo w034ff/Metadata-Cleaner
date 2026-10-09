@@ -12,8 +12,7 @@ export const en: Translations = {
   },
   dropZone: {
     title: "Drop files or folders here",
-    description:
-      "Supports JPEG, PNG, WebP, PDF. Drop a folder to add files inside.",
+    description: "JPEG, PNG, WebP, PDF",
     addFiles: "Add files",
     addFolder: "Add folder",
   },
@@ -30,7 +29,6 @@ export const en: Translations = {
     keptTitle: "Kept information",
     savedNameTitle: "Saved file name",
     removedTitle: "Removed information",
-    noSelection: "Select a file",
   },
   footer: {
     cleanCount: "Clean and save {count} item(s)",
@@ -43,7 +41,6 @@ export const en: Translations = {
   job: {
     running: "Processing…",
     runningItem: "Processing: {name}",
-    runningItemAndOthers: "Processing: {name} and {count} more",
     done: "Done",
     doneAllSucceeded: "All completed successfully",
     doneWithFailures: "Some items failed",

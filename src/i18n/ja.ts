@@ -12,8 +12,7 @@ export const ja = {
   },
   dropZone: {
     title: "ファイルまたはフォルダをここにドロップ",
-    description:
-      "JPEG、PNG、WebP、PDF に対応。フォルダをドロップすると、直下のファイルをまとめて追加します",
+    description: "JPEG、PNG、WebP、PDF",
     addFiles: "ファイルを追加",
     addFolder: "フォルダを追加",
   },
@@ -29,7 +28,6 @@ export const ja = {
     keptTitle: "残す情報",
     savedNameTitle: "保存した名前",
     removedTitle: "消した情報",
-    noSelection: "ファイルを選んでください",
   },
   footer: {
     cleanCount: "{count} 件から情報を消して保存します",
@@ -42,7 +40,6 @@ export const ja = {
   job: {
     running: "処理中…",
     runningItem: "処理中：{name}",
-    runningItemAndOthers: "処理中：{name} ほか {count} 件",
     done: "完了",
     doneAllSucceeded: "すべて完了しました",
     doneWithFailures: "失敗があります",
