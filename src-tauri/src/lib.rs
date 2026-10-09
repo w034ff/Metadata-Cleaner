@@ -1,8 +1,9 @@
 //! Application entry point.
 
 use std::ffi::OsString;
-use std::sync::Arc;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
 use mcleaner_worker::WORKER_FLAG;
 use tauri::{DragDropEvent, Emitter, Manager, WindowEvent};
@@ -27,6 +28,9 @@ pub struct AppState {
     pub pool: WorkerPool,
     /// Flag indicating whether a cleaning job is currently executing (design §6.1, §7.1).
     pub is_running: Arc<AtomicBool>,
+    /// The folder cleaned files are saved in (design §6.5). Set by
+    /// `pick_output_dir` and the restored settings, read by `start_clean`.
+    pub output_dir: Arc<Mutex<Option<PathBuf>>>,
 }
 
 impl AppState {
@@ -36,6 +40,7 @@ impl AppState {
             items: Arc::new(ItemTable::new()),
             pool,
             is_running: Arc::new(AtomicBool::new(false)),
+            output_dir: Arc::new(Mutex::new(None)),
         }
     }
 }
