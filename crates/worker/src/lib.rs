@@ -4,6 +4,7 @@
 //! [`server::run`]; [`client::WorkerProcess`] is the main-process side.
 
 pub mod client;
+pub mod pdf;
 pub mod protocol;
 pub mod server;
 #[cfg(windows)]
