@@ -68,6 +68,7 @@ PDF Converter（https://github.com/w034ff/PDF-Converter）と同じ作りのと�
 │   │   ├── xmp.rs            XMP の分類（§4.5）
 │   │   ├── iptc.rs           IPTC の分類と詳細（§4.5）
 │   │   ├── report.rs         見つかった情報の型（§4.7）
+│   │   ├── image_file.rs     画像 1 つの調査・詳細・除去（§4.2〜§4.5 をつなぐ）
 │   │   ├── naming.rs         出力名の決定（§6.4。PDF Converter の naming.rs を写す）
 │   │   └── error.rs
 │   ├── examples/gen_fixtures.rs   フィクスチャの生成（§11.1）
@@ -178,7 +179,8 @@ PDF Converter（https://github.com/w034ff/PDF-Converter）と同じ作りのと�
 **詳細**（FR-06）
 
 - 詳細は、種類ごとに項目（`Field` と値）を並べたもの。`Field` は「緯度」「撮影日時」「カメラの機種」などの表示名のキーで、文言はフロントエンドの辞書に置く（§10.2）。上の表の項目ごとに `Field` を 1 つ決め、それ以外は `Field::Other` と元の名前（`XPKeywords` など）にする。
-- 値は Rust が表示用の文字列にする。緯度・経度は度分秒と方角（`12°34′56″ N`）、日時は `2026-01-02 03:04:05` の形、サムネイルは寸法（読めなければバイト数）、XMP 全体は `XMP（{n} バイト）`。
+- 値は Rust が表示用の文字列にする。緯度・経度は度分秒と方角（`12°34′56″ N`）、日時は `2026-01-02 03:04:05` の形、サムネイルは寸法（`160 × 120 px`）。言語によって文が変わる値は、文字列にせず数で渡し、文はフロントエンドの辞書で作る: 大きさ（読めないサムネイル、メーカーノート、圧縮された PNG のテキスト、XMP、EOI の後ろの画像でないデータなど）はバイト数、過去の版は回数（§4.7 の `DetailValue`）。
+- XMP は XML として解析しないので、値を項目ごとには出さない。XMP が当たった種類ごとに、その種類の欄へ `Field::Xmp` の項目を 1 つ置き、値は XMP のバイト数にする（画面では「XMP（{n} バイト）」）。どの種類にも当たらない XMP は `Other` の欄に置く。
 - 1 つの値は `MAX_DETAIL_VALUE_CHARS`（200 文字）、1 つのファイルの項目は `MAX_DETAIL_ENTRIES`（100）で打ち切り、打ち切ったことを示す。
 - 詳細は、行が選ばれたときに `get_details`（§7.1）で毎回ファイルを読み直して作る。値を Rust の表にも設定にも持たず、ログにも書かない（FR-06、NFR-01）。
 
@@ -213,8 +215,9 @@ PDF Converter（https://github.com/w034ff/PDF-Converter）と同じ作りのと�
 ### 4.7 調べた結果の型（`report.rs`）
 
 - `Inspection { format, kinds: Vec<MetadataKind>, kept: Vec<KeptInfo> }`。`kinds` は重なりなしで、§4.5 の表の順に並べる。
-- `Details { groups: Vec<{ kind, entries: Vec<{ field, name?, value }> }>, kept: Vec<KeptInfo>, truncated }`。
-- `KeptInfo`: `Orientation(1..=8)`、`ColorProfile { description? }`（ICC の `desc` を読めればその文字列）、`Resolution { x, y, unit }`。PDF では空。
+- `Details { groups: Vec<{ kind, entries: Vec<{ field, name?, value }> }>, kept: Vec<KeptInfo>, truncated }`。`name` は `Field::Other` のときだけ入る元の名前。
+- `DetailValue`: `Text(String)`（表示用の文字列）、`Bytes(u64)`（大きさ）、`Count(u32)`（過去の版の数）。
+- `KeptInfo`: `Orientation(2..=8)`（1 は残さないので出さない。§4.5）、`ColorProfile { description? }`（ICC の `desc` を読めればその文字列）、`Resolution { x, y, unit }`（EXIF の解像度。なければ JFIF の密度、PNG の `pHYs`。単位が不明のものは出さない）。PDF では空。
 
 ## 5. ワーカー（NFR-01）
 
