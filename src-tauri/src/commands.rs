@@ -1,19 +1,28 @@
 //! IPC commands (design §7.1).
 
+use std::path::PathBuf;
 use std::sync::Mutex;
+use std::sync::atomic::Ordering;
 
-use serde::Serialize;
-use tauri::{AppHandle, Manager};
-
+use mcleaner_core::detect::SUPPORTED_EXTENSIONS;
+use mcleaner_core::report::Details;
 use mcleaner_worker::WORKER_FLAG;
 use mcleaner_worker::client::{INSPECT_TIMEOUT, WorkerError, WorkerProcess};
 use mcleaner_worker::protocol::{Request, Response};
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Manager};
+use tauri_plugin_dialog::DialogExt;
+use ts_rs::TS;
+
+use crate::AppState;
+use crate::error::{ErrorCode, IpcError};
+use crate::items::{self, AddResult};
 
 /// The worker started by [`check_worker`], kept running so that the owner
 /// can end the app from the task manager and see the worker go with it
 /// (work-plan T01). Dropped with the app, which ends the worker.
 #[derive(Default)]
-pub struct CheckedWorker(Mutex<Option<WorkerProcess>>);
+pub struct CheckedWorker(pub Mutex<Option<WorkerProcess>>);
 
 /// Answer of [`check_worker`].
 #[derive(Debug, Serialize)]
@@ -64,5 +73,124 @@ fn ping_new_worker() -> Result<(WorkerProcess, String), String> {
             Err(format!("{code}: {}", detail.unwrap_or_default()))
         }
         Err(e) => Err(format!("{e:?}")),
+    }
+}
+
+/// Where `add_files` takes files from (design §7.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+pub enum AddSource {
+    Files,
+    Folder,
+}
+
+/// Asks for files or a folder and adds them to the list (design §7.1).
+/// Returns `None` if the dialog was cancelled.
+#[tauri::command]
+pub async fn add_files(
+    window: tauri::Window,
+    state: tauri::State<'_, AppState>,
+    source: AddSource,
+) -> Result<Option<AddResult>, IpcError> {
+    if state.is_running.load(Ordering::SeqCst) {
+        return Err(IpcError::from_code(ErrorCode::JobRunning));
+    }
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || match source {
+        AddSource::Files => {
+            let picked = pick_files(&window, "Supported files", &SUPPORTED_EXTENSIONS)?;
+            picked
+                .map(|paths| items::add_files(&state, &paths))
+                .transpose()
+        }
+        AddSource::Folder => {
+            let picked = pick_folder(&window)?;
+            picked
+                .map(|dir| items::add_folder(&state, &dir))
+                .transpose()
+        }
+    })
+    .await
+    .map_err(task_failed)?
+}
+
+/// Removes items from the list (design §7.1). An ID not in the table is ignored.
+#[tauri::command]
+pub fn remove_items(state: tauri::State<'_, AppState>, ids: Vec<u64>) -> Result<(), IpcError> {
+    items::remove_items(&state, &ids)
+}
+
+/// Gets the metadata details for an item (design §6.2, §7.1).
+#[tauri::command]
+pub async fn get_details(state: tauri::State<'_, AppState>, id: u64) -> Result<Details, IpcError> {
+    let state = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || items::details(&state, id))
+        .await
+        .map_err(task_failed)?
+}
+
+/// Opens a dialog to pick several files with one of `extensions`.
+fn pick_files(
+    window: &tauri::Window,
+    filter_name: &str,
+    extensions: &[&str],
+) -> Result<Option<Vec<PathBuf>>, IpcError> {
+    let patterns = filter_extensions(extensions);
+    let patterns: Vec<&str> = patterns.iter().map(String::as_str).collect();
+    window
+        .dialog()
+        .file()
+        .set_parent(window)
+        .add_filter(filter_name, &patterns)
+        .blocking_pick_files()
+        .map(|files| files.into_iter().map(dialog_path).collect())
+        .transpose()
+}
+
+/// The extensions to give a file dialog's filter: each one in lower and upper
+/// case. On Linux the dialog is GTK3's, whose patterns are case sensitive, so
+/// `*.png` alone would hide `IMG_0001.PNG`; the Windows dialog ignores case and
+/// is not hurt by the extra entries.
+fn filter_extensions(extensions: &[&str]) -> Vec<String> {
+    extensions
+        .iter()
+        .flat_map(|extension| [extension.to_lowercase(), extension.to_uppercase()])
+        .collect()
+}
+
+/// Opens a dialog to pick a folder.
+fn pick_folder(window: &tauri::Window) -> Result<Option<PathBuf>, IpcError> {
+    window
+        .dialog()
+        .file()
+        .set_parent(window)
+        .blocking_pick_folder()
+        .map(dialog_path)
+        .transpose()
+}
+
+fn dialog_path(picked: tauri_plugin_dialog::FilePath) -> Result<PathBuf, IpcError> {
+    picked
+        .into_path()
+        .map_err(|_| IpcError::from_code(ErrorCode::ReadFailed))
+}
+
+fn task_failed(error: tauri::Error) -> IpcError {
+    IpcError::new(ErrorCode::ReadFailed, error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_filter_has_each_extension_in_both_cases() {
+        assert_eq!(filter_extensions(&["pdf"]), ["pdf", "PDF"]);
+        assert_eq!(
+            filter_extensions(&SUPPORTED_EXTENSIONS),
+            [
+                "jpg", "JPG", "jpeg", "JPEG", "png", "PNG", "webp", "WEBP", "pdf", "PDF"
+            ]
+        );
     }
 }

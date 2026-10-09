@@ -1,11 +1,12 @@
 //! Report data structures and detail types for inspected images (design §4.5, §4.7).
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::detect::Format;
 
 /// Categories for found metadata, ordered as specified in design §4.5.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum MetadataKind {
     Location,
@@ -20,7 +21,7 @@ pub enum MetadataKind {
 }
 
 /// Specific metadata field keys.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum Field {
     Latitude,
@@ -51,16 +52,16 @@ pub enum Field {
 }
 
 /// Representation of a metadata detail value.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(tag = "type", content = "value", rename_all = "camelCase")]
 pub enum DetailValue {
     Text(String),
-    Bytes(u64),
+    Bytes(#[ts(type = "number")] u64),
     Count(u32),
 }
 
 /// A single metadata entry.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailEntry {
     pub field: Field,
@@ -69,7 +70,7 @@ pub struct DetailEntry {
 }
 
 /// A group of detail entries sharing a metadata category.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailGroup {
     pub kind: MetadataKind,
@@ -77,7 +78,7 @@ pub struct DetailGroup {
 }
 
 /// Units for kept resolution information.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum ResolutionUnit {
     Inch,
@@ -86,7 +87,7 @@ pub enum ResolutionUnit {
 }
 
 /// Information preserved from the original file when cleaning.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -116,7 +117,7 @@ pub struct Inspection {
 }
 
 /// Detailed metadata inspection result (design §4.7).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Details {
     pub groups: Vec<DetailGroup>,
