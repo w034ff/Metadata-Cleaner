@@ -1,5 +1,11 @@
 import type { Language } from "../i18n";
-import type { Details, FileItem, IpcError, OutputDirLabel } from "../ipc";
+import type {
+  Details,
+  FileItem,
+  IpcError,
+  OutputDirLabel,
+  Skipped,
+} from "../ipc";
 import type { JobAction, JobState } from "./job";
 
 export interface LanguageState {
@@ -17,6 +23,7 @@ export type LanguageAction = { type: "SET_LANGUAGE"; language: Language };
 export interface AppState {
   language: LanguageState;
   items: FileItem[];
+  lastSkipped: Skipped | null;
   outputDir: OutputDirLabel | null;
   job: JobState;
   selectedId: number | null;
@@ -35,7 +42,7 @@ export type DetailsAction =
 export type AppAction =
   | LanguageAction
   | { type: "SET_ITEMS"; items: FileItem[] }
-  | { type: "ADD_ITEMS"; items: FileItem[] }
+  | { type: "ADD_ITEMS"; items: FileItem[]; skipped?: Skipped }
   | { type: "REMOVE_ITEMS"; ids: number[] }
   | { type: "CLEAR_ITEMS" }
   | { type: "SET_OUTPUT_DIR"; outputDir: OutputDirLabel | null }

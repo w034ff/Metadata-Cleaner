@@ -18,6 +18,7 @@ export function createInitialAppState(
     return {
       language: createInitialLanguageState(initialNavLang),
       items: [],
+      lastSkipped: null,
       outputDir: null,
       job: { ...initialJobState },
       selectedId: null,
@@ -30,6 +31,7 @@ export function createInitialAppState(
   return {
     language: createInitialLanguageState(initialNavLang, settings.language),
     items: [],
+    lastSkipped: null,
     outputDir: settings.outputDir,
     job: { ...initialJobState },
     selectedId: null,
@@ -81,6 +83,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return dropStaleResult(state, {
         ...state,
         items: [...state.items, ...action.items],
+        lastSkipped: action.skipped ?? null,
       });
     case "REMOVE_ITEMS": {
       const wasSelected =
@@ -99,6 +102,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       const nextState: AppState = {
         ...state,
         items: [],
+        lastSkipped: null,
         selectedId: null,
         details: null,
         detailsError: null,

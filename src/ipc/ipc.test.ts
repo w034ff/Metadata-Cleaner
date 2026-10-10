@@ -33,6 +33,8 @@ describe("ipc error helpers", () => {
   it("identifies valid error codes", () => {
     expect(isErrorCode("UnsupportedFormat")).toBe(true);
     expect(isErrorCode("SameFolderAsSource")).toBe(true);
+    expect(isErrorCode("OutputDirMissing")).toBe(true);
+    expect(isErrorCode("OutputDirNotWritable")).toBe(true);
     expect(isErrorCode("VerifyFailed")).toBe(true);
     expect(isErrorCode("NotAnErrorCode")).toBe(false);
     expect(isErrorCode(123)).toBe(false);

@@ -269,4 +269,88 @@ describe("ItemList", () => {
 
     getDetails.mockRestore();
   });
+
+  it("displays skipped count message in header when lastSkipped is present", () => {
+    const state: AppState = {
+      ...createInitialAppState("ja"),
+      items: sampleItems,
+      lastSkipped: { folders: 1, unsupported: 2, duplicates: 0 },
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <ItemList />
+      </AppStateProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        /ファイル 3 件 （対象外 3 件：サブフォルダ、非対応の形式）/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("clears skipped message on clear all", async () => {
+    vi.spyOn(ipcModule, "removeItems").mockResolvedValue(undefined);
+
+    const state: AppState = {
+      ...createInitialAppState("ja"),
+      items: sampleItems,
+      lastSkipped: { folders: 1, unsupported: 0, duplicates: 0 },
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <ItemList />
+      </AppStateProvider>,
+    );
+
+    expect(
+      screen.getByText(/（対象外 1 件：サブフォルダ）/),
+    ).toBeInTheDocument();
+
+    const clearBtn = screen.getByRole("button", { name: "すべて外す" });
+    await act(async () => {
+      fireEvent.click(clearBtn);
+    });
+
+    expect(
+      screen.queryByText(/（対象外 1 件：サブフォルダ）/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates skipped message on next addition", async () => {
+    vi.spyOn(ipcModule, "addFiles").mockResolvedValue({
+      added: [],
+      skipped: { folders: 0, unsupported: 1, duplicates: 0 },
+    });
+
+    const state: AppState = {
+      ...createInitialAppState("ja"),
+      items: sampleItems,
+      lastSkipped: { folders: 1, unsupported: 0, duplicates: 0 },
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <ItemList />
+      </AppStateProvider>,
+    );
+
+    expect(
+      screen.getByText(/（対象外 1 件：サブフォルダ）/),
+    ).toBeInTheDocument();
+
+    const addFilesBtn = screen.getByRole("button", { name: "ファイルを追加" });
+    await act(async () => {
+      fireEvent.click(addFilesBtn);
+    });
+
+    expect(
+      screen.queryByText(/（対象外 1 件：サブフォルダ）/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/（対象外 1 件：非対応の形式）/),
+    ).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,25 @@
 import { formatMessage, getTranslations, type Language } from "../../i18n";
 import type { JobFinishedPayload } from "../../ipc";
 
+export type JobOutcome = "success" | "failure" | "cancelled";
+
+/**
+ * Returns the overall outcome of a cleaning job (design §10.1).
+ * - "failure": at least one failure (failed > 0)
+ * - "cancelled": cancelled with no failures (failed === 0 && cancelled)
+ * - "success": all items saved without failures (failed === 0 && !cancelled)
+ * Unprocessed items (remaining after cancellation) are not counted as failures.
+ */
+export function jobOutcome(finished: JobFinishedPayload): JobOutcome {
+  if (finished.failed > 0) {
+    return "failure";
+  }
+  if (finished.cancelled) {
+    return "cancelled";
+  }
+  return "success";
+}
+
 /**
  * Returns whether all items were successfully cleaned without any failures, unprocessed items, or unreadable items.
  */

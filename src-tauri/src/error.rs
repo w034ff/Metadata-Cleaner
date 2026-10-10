@@ -19,6 +19,8 @@ pub enum ErrorCode {
     WorkerTimeout,
     VerifyFailed,
     SameFolderAsSource,
+    OutputDirMissing,
+    OutputDirNotWritable,
     ReadFailed,
     WriteFailed,
     JobRunning,
@@ -28,7 +30,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, so that [`ErrorCode::from_name`] cannot miss one.
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 17] = [
         Self::UnsupportedFormat,
         Self::DecodeFailed,
         Self::PdfOpenFailed,
@@ -39,6 +41,8 @@ impl ErrorCode {
         Self::WorkerTimeout,
         Self::VerifyFailed,
         Self::SameFolderAsSource,
+        Self::OutputDirMissing,
+        Self::OutputDirNotWritable,
         Self::ReadFailed,
         Self::WriteFailed,
         Self::JobRunning,
@@ -59,6 +63,8 @@ impl ErrorCode {
             Self::WorkerTimeout => "WorkerTimeout",
             Self::VerifyFailed => "VerifyFailed",
             Self::SameFolderAsSource => "SameFolderAsSource",
+            Self::OutputDirMissing => "OutputDirMissing",
+            Self::OutputDirNotWritable => "OutputDirNotWritable",
             Self::ReadFailed => "ReadFailed",
             Self::WriteFailed => "WriteFailed",
             Self::JobRunning => "JobRunning",

@@ -2,6 +2,7 @@ import { ProgressBar } from "../../components";
 import { formatMessage, getTranslations } from "../../i18n";
 import { useAppState } from "../../state";
 import "./JobFooter.css";
+import { jobOutcome } from "./jobSummary";
 import { useJobRunner } from "./useJobRunner";
 
 /**
@@ -43,13 +44,24 @@ export function JobFooter() {
       ) : (
         <>
           {job.finished !== null ? (
-            job.finished.failed > 0 || job.finished.unprocessed > 0 ? (
-              <span className="job-footer-status-error">
-                ✕ {t.job.doneWithFailures}
-              </span>
-            ) : (
-              <span className="hint">{t.job.doneAllSucceeded}</span>
-            )
+            (() => {
+              const outcome = jobOutcome(job.finished);
+              if (outcome === "failure") {
+                return (
+                  <span className="job-footer-status-error">
+                    ✕ {t.job.doneWithFailures}
+                  </span>
+                );
+              }
+              if (outcome === "cancelled") {
+                return <span className="hint">{t.job.cancelled}</span>;
+              }
+              return (
+                <span className="job-footer-status-success">
+                  ✓ {t.job.doneAllSucceeded}
+                </span>
+              );
+            })()
           ) : items.length > 0 ? (
             <span className="hint">
               {formatMessage(t.footer.cleanCount, { count: validCount })}

@@ -19,9 +19,11 @@ export function useItemsDropped(options?: UseItemsDroppedOptions): void {
 
     async function subscribe() {
       const u = await onItemsDropped((payload) => {
-        if (payload.added.length > 0) {
-          dispatch({ type: "ADD_ITEMS", items: payload.added });
-        }
+        dispatch({
+          type: "ADD_ITEMS",
+          items: payload.added,
+          skipped: payload.skipped,
+        });
         options?.onDropped?.(payload);
       });
       if (unmounted) {

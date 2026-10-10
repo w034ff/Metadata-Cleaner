@@ -67,6 +67,8 @@ const ERROR_CODES = {
   WorkerTimeout: true,
   VerifyFailed: true,
   SameFolderAsSource: true,
+  OutputDirMissing: true,
+  OutputDirNotWritable: true,
   ReadFailed: true,
   WriteFailed: true,
   JobRunning: true,

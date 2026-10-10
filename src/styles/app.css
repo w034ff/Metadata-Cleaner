@@ -296,3 +296,8 @@ a:hover {
   flex: 1;
   max-width: 480px;
 }
+
+.drop-zone-skipped {
+  text-align: center;
+  margin: 0;
+}

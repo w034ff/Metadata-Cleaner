@@ -91,9 +91,30 @@ pub fn parse_datasets(data: &[u8]) -> Option<Vec<IptcDataset<'_>>> {
     }
 }
 
+/// Returns `DetailValue::Text` if `data` is valid UTF-8 and contains no control characters,
+/// or `DetailValue::Bytes` otherwise (design §4.5).
+fn parse_iptc_text(data: &[u8]) -> DetailValue {
+    match std::str::from_utf8(data) {
+        Ok(s)
+            if !s
+                .chars()
+                .any(|c| c.is_control() && c != '\t' && c != '\n' && c != '\r') =>
+        {
+            DetailValue::Text(s.to_string())
+        }
+        _ => DetailValue::Bytes(data.len() as u64),
+    }
+}
+
 /// Formats an IPTC date (2:55) and optional time (2:60) into `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DD`.
-fn format_iptc_datetime(date_bytes: &[u8], time_bytes: Option<&[u8]>) -> String {
-    let date_str = String::from_utf8_lossy(date_bytes);
+fn format_iptc_datetime(date_bytes: &[u8], time_bytes: Option<&[u8]>) -> DetailValue {
+    let Ok(date_str) = std::str::from_utf8(date_bytes) else {
+        return DetailValue::Bytes(date_bytes.len() as u64);
+    };
+    if date_str.chars().any(|c| c.is_control()) {
+        return DetailValue::Bytes(date_bytes.len() as u64);
+    }
+
     let formatted_date = if date_str.len() == 8 && date_str.chars().all(|c| c.is_ascii_digit()) {
         format!(
             "{}-{}-{}",
@@ -102,25 +123,25 @@ fn format_iptc_datetime(date_bytes: &[u8], time_bytes: Option<&[u8]>) -> String 
             &date_str[6..8]
         )
     } else {
-        date_str.into_owned()
+        date_str.to_string()
     };
 
-    if let Some(tb) = time_bytes {
-        let time_str = String::from_utf8_lossy(tb);
-        if time_str.len() >= 6 && time_str[..6].chars().all(|c| c.is_ascii_digit()) {
-            let formatted_time = format!(
-                "{}:{}:{}",
-                &time_str[0..2],
-                &time_str[2..4],
-                &time_str[4..6]
-            );
-            format!("{formatted_date} {formatted_time}")
-        } else {
-            formatted_date
-        }
-    } else {
-        formatted_date
+    if let Some(tb) = time_bytes
+        && let Ok(time_str) = std::str::from_utf8(tb)
+        && !time_str.chars().any(|c| c.is_control())
+        && time_str.len() >= 6
+        && time_str[..6].chars().all(|c| c.is_ascii_digit())
+    {
+        let formatted_time = format!(
+            "{}:{}:{}",
+            &time_str[0..2],
+            &time_str[2..4],
+            &time_str[4..6]
+        );
+        return DetailValue::Text(format!("{formatted_date} {formatted_time}"));
     }
+
+    DetailValue::Text(formatted_date)
 }
 
 /// Collects detail entries from a raw IPTC data block.
@@ -164,7 +185,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Created,
                         name: None,
-                        value: DetailValue::Text(dt),
+                        value: dt,
                     },
                 ));
             }
@@ -174,7 +195,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::City,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -184,7 +205,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::State,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -194,7 +215,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Country,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -204,7 +225,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Other,
                         name: Some(format!("{}:{}", d.record, d.dataset)),
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -214,7 +235,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Author,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -224,7 +245,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Copyright,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -234,7 +255,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Title,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -244,7 +265,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Description,
                         name: None,
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -254,7 +275,7 @@ pub fn collect_details(iptc_data: &[u8]) -> Vec<(MetadataKind, DetailEntry)> {
                     DetailEntry {
                         field: Field::Other,
                         name: Some(format!("{rec}:{num}")),
-                        value: DetailValue::Text(String::from_utf8_lossy(d.data).into_owned()),
+                        value: parse_iptc_text(d.data),
                     },
                 ));
             }
@@ -355,5 +376,42 @@ mod tests {
             entries[0].1.value,
             DetailValue::Text("Photographer".to_string())
         );
+    }
+
+    #[test]
+    fn test_iptc_control_characters_and_invalid_utf8() {
+        let mut data = Vec::new();
+        // Record 2, Dataset 0 (record version, e.g. version 2 = [0x00, 0x02], binary)
+        data.extend_from_slice(&make_dataset(2, 0, &[0x00, 0x02]));
+        // Record 2, Dataset 80 (Author with control character NUL or BEL)
+        data.extend_from_slice(&make_dataset(2, 80, b"Author\x07Name"));
+        // Record 2, Dataset 90 (City with invalid UTF-8)
+        data.extend_from_slice(&make_dataset(2, 90, &[0xFF, 0xFE, 0xFD]));
+        // Record 2, Dataset 101 (Country with valid text)
+        data.extend_from_slice(&make_dataset(2, 101, b"Japan"));
+
+        let entries = collect_details(&data);
+        assert_eq!(entries.len(), 4);
+
+        // Version (2:0) -> Other, Bytes(2)
+        assert_eq!(entries[0].0, MetadataKind::Other);
+        assert_eq!(entries[0].1.field, Field::Other);
+        assert_eq!(entries[0].1.name.as_deref(), Some("2:0"));
+        assert_eq!(entries[0].1.value, DetailValue::Bytes(2));
+
+        // Author (2:80) with control char -> Author, Bytes(11)
+        assert_eq!(entries[1].0, MetadataKind::Author);
+        assert_eq!(entries[1].1.field, Field::Author);
+        assert_eq!(entries[1].1.value, DetailValue::Bytes(11));
+
+        // City (2:90) with invalid UTF-8 -> Location, Bytes(3)
+        assert_eq!(entries[2].0, MetadataKind::Location);
+        assert_eq!(entries[2].1.field, Field::City);
+        assert_eq!(entries[2].1.value, DetailValue::Bytes(3));
+
+        // Country (2:101) valid -> Location, Text("Japan")
+        assert_eq!(entries[3].0, MetadataKind::Location);
+        assert_eq!(entries[3].1.field, Field::Country);
+        assert_eq!(entries[3].1.value, DetailValue::Text("Japan".to_string()));
     }
 }

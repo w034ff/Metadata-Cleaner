@@ -96,6 +96,29 @@ describe("App", () => {
       ).toBeInTheDocument();
     });
 
+    it("shows skipped message below drop zone when files are skipped and list is empty", async () => {
+      mockAppIpc((cmd) => {
+        if (cmd === "add_files") {
+          return {
+            added: [],
+            skipped: { folders: 1, unsupported: 0, duplicates: 0 },
+          };
+        }
+        return new Promise(() => {});
+      });
+
+      render(<App initialNavLang="ja" initialSettings={null} />);
+
+      const addBtn = screen.getByRole("button", { name: "ファイルを追加" });
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      expect(
+        screen.getByText("（対象外 1 件：サブフォルダ）"),
+      ).toBeInTheDocument();
+    });
+
     it("shows hint text in the right aside when nothing is selected", () => {
       mockAppIpc(() => new Promise(() => {}));
       render(<App initialSettings={null} />);

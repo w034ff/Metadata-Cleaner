@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 import { isOutputDirError } from "./outputDirErrors";
 
 describe("isOutputDirError", () => {
-  it("returns true for SameFolderAsSource", () => {
+  it("returns true for SameFolderAsSource, OutputDirMissing, and OutputDirNotWritable", () => {
     expect(isOutputDirError({ code: "SameFolderAsSource", detail: null })).toBe(
       true,
     );
+    expect(isOutputDirError({ code: "OutputDirMissing", detail: null })).toBe(
+      true,
+    );
+    expect(
+      isOutputDirError({ code: "OutputDirNotWritable", detail: null }),
+    ).toBe(true);
   });
 
   it("returns false for other errors", () => {

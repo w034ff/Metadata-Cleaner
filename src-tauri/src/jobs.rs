@@ -169,12 +169,12 @@ fn create_output_temp(output_dir: &Path) -> std::io::Result<tempfile::NamedTempF
 
 /// Checks that `dir` is a directory and that a temporary file can be created in it (design §6.5).
 pub fn check_output_dir(dir: &Path) -> Result<(), IpcError> {
-    if !dir.is_dir() {
-        return Err(IpcError::from_code(ErrorCode::WriteFailed));
+    if !dir.is_dir() || fs::canonicalize(dir).is_err() {
+        return Err(IpcError::from_code(ErrorCode::OutputDirMissing));
     }
     create_output_temp(dir)
         .map(drop)
-        .map_err(|_| IpcError::from_code(ErrorCode::WriteFailed))
+        .map_err(|_| IpcError::from_code(ErrorCode::OutputDirNotWritable))
 }
 
 /// Raises `write_failed`, which stops a conversion from taking up its next
@@ -409,8 +409,8 @@ where
         return Err(IpcError::from_code(ErrorCode::InvalidParams));
     }
 
-    let output_canonical =
-        fs::canonicalize(output_dir).map_err(|_| IpcError::from_code(ErrorCode::WriteFailed))?;
+    let output_canonical = fs::canonicalize(output_dir)
+        .map_err(|_| IpcError::from_code(ErrorCode::OutputDirMissing))?;
 
     for (_, entry, _) in &valid_tasks_info {
         if let Some(parent) = entry.path.parent()

@@ -26,6 +26,13 @@ export const ja = {
     headerKinds: "見つかった情報",
     headerStatus: "状態",
   },
+  skipped: {
+    message: "（対象外 {count} 件：{reasons}）",
+    reasonSeparator: "、",
+    folders: "サブフォルダ",
+    unsupported: "非対応の形式",
+    duplicates: "重複",
+  },
   outputDir: {
     title: "保存先フォルダ",
     choose: "フォルダを選ぶ",
