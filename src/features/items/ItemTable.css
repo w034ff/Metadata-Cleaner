@@ -35,7 +35,7 @@
   font-size: 13px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--color-border-subtle);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .item-table tr.selected {
