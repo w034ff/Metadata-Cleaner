@@ -1,4 +1,5 @@
-import { formatJobSummary, isJobSuccessful, jobOutcome } from "./jobSummary";
+import { describe, expect, it } from "vitest";
+import { formatJobSummary, jobOutcome } from "./jobSummary";
 
 describe("jobOutcome", () => {
   it("returns success when no failures and not cancelled", () => {
@@ -47,44 +48,6 @@ describe("jobOutcome", () => {
 });
 
 describe("jobSummary", () => {
-  it("determines whether a job was completely successful", () => {
-    expect(
-      isJobSuccessful({
-        succeeded: 5,
-        failed: 0,
-        unprocessed: 0,
-        cancelled: false,
-      }),
-    ).toBe(true);
-
-    expect(
-      isJobSuccessful({
-        succeeded: 4,
-        failed: 1,
-        unprocessed: 0,
-        cancelled: false,
-      }),
-    ).toBe(false);
-
-    expect(
-      isJobSuccessful({
-        succeeded: 4,
-        failed: 0,
-        unprocessed: 1,
-        cancelled: false,
-      }),
-    ).toBe(false);
-
-    expect(
-      isJobSuccessful({
-        succeeded: 5,
-        failed: 0,
-        unprocessed: 0,
-        cancelled: true,
-      }),
-    ).toBe(false);
-  });
-
   it("formats completed summary in Japanese", () => {
     const summary = formatJobSummary(
       { succeeded: 4, failed: 1, unprocessed: 1, cancelled: false },
@@ -133,14 +96,5 @@ describe("jobSummary", () => {
     );
     expect(summary).toBe("保存 4 件");
     expect(summary).not.toContain("対象外");
-  });
-
-  it("considers job unsuccessful when unreadableCount > 0", () => {
-    expect(
-      isJobSuccessful(
-        { succeeded: 4, failed: 0, unprocessed: 0, cancelled: false },
-        1,
-      ),
-    ).toBe(false);
   });
 });

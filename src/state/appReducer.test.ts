@@ -175,4 +175,48 @@ describe("appReducer", () => {
     state = appReducer(state, { type: "CLEAR_ITEMS" });
     expect(state.selectedId).toBe(null);
   });
+
+  it("preserves finished job results when ADD_ITEMS adds no items (e.g. duplicates only)", () => {
+    let state = createInitialAppState();
+    state = appReducer(state, { type: "ADD_ITEMS", items: [sampleItem] });
+
+    // Simulate running then finished job
+    state = appReducer(state, {
+      type: "JOB_STARTED",
+      targets: [{ id: sampleItem.id, name: sampleItem.name }],
+    });
+    const finishedResult = {
+      succeeded: 1,
+      failed: 0,
+      unprocessed: 0,
+      cancelled: false,
+    };
+    state = appReducer(state, {
+      type: "JOB_FINISHED",
+      finished: finishedResult,
+    });
+    expect(state.job.finished).toEqual(finishedResult);
+
+    // Adding no items (e.g. duplicate skipped) updates lastSkipped and preserves job.finished
+    state = appReducer(state, {
+      type: "ADD_ITEMS",
+      items: [],
+      skipped: { folders: 0, unsupported: 0, duplicates: 1 },
+    });
+    expect(state.items).toEqual([sampleItem]);
+    expect(state.lastSkipped).toEqual({
+      folders: 0,
+      unsupported: 0,
+      duplicates: 1,
+    });
+    expect(state.job.finished).toEqual(finishedResult);
+
+    // Adding actual items drops stale job result
+    state = appReducer(state, {
+      type: "ADD_ITEMS",
+      items: [{ ...sampleItem, id: 2 }],
+    });
+    expect(state.items.length).toBe(2);
+    expect(state.job.finished).toBe(null);
+  });
 });

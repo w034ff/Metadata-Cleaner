@@ -15,12 +15,10 @@
   border-left: 3px solid var(--color-success);
 }
 
-.job-summary-banner-failure,
 .job-summary-banner-warning {
   border-left: 3px solid var(--color-error);
 }
 
-.job-summary-banner-cancelled,
 .job-summary-banner-neutral {
   border-left: 3px solid var(--color-border-subtle);
 }
@@ -29,7 +27,6 @@
   color: var(--color-success);
 }
 
-.job-summary-icon-failure,
 .job-summary-icon-warning {
   color: var(--color-error);
 }

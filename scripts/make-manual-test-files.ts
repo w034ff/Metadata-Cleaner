@@ -29,12 +29,12 @@ const MAX_IMAGE_FILE_BYTES = 256 * 1024 * 1024;
 const MAX_PDF_FILE_BYTES = 512 * 1024 * 1024;
 
 // Number of indirect objects in the slow PDF.
-// 150,000 objects takes ~12-13 seconds for a batch of 4 files on 4 concurrent workers (design §5.2).
-// Each file alone takes ~7-8 seconds (well below CLEAN_TIMEOUT of 60 seconds).
-const SLOW_PDF_OBJECT_COUNT = 150_000;
+// 40,000 objects takes ~0.8-1.0 second per file alone (well below CLEAN_TIMEOUT of 60 seconds),
+// and ~17-18 seconds for a batch of 50 files across 4 concurrent workers (design §5.2).
+const SLOW_PDF_OBJECT_COUNT = 40_000;
 
 // Number of slow PDF copies in cancel-batch/.
-const CANCEL_BATCH_COUNT = 4;
+const CANCEL_BATCH_COUNT = 50;
 
 function readConstantFromRust(filePath: string, constantName: string): number {
   if (!existsSync(filePath)) {

@@ -80,6 +80,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return dropStaleResult(state, nextState);
     }
     case "ADD_ITEMS":
+      if (action.items.length === 0) {
+        return {
+          ...state,
+          lastSkipped: action.skipped ?? null,
+        };
+      }
       return dropStaleResult(state, {
         ...state,
         items: [...state.items, ...action.items],

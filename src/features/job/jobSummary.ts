@@ -21,21 +21,6 @@ export function jobOutcome(finished: JobFinishedPayload): JobOutcome {
 }
 
 /**
- * Returns whether all items were successfully cleaned without any failures, unprocessed items, or unreadable items.
- */
-export function isJobSuccessful(
-  finished: JobFinishedPayload,
-  unreadableCount = 0,
-): boolean {
-  return (
-    !finished.cancelled &&
-    finished.failed === 0 &&
-    finished.unprocessed === 0 &&
-    unreadableCount === 0
-  );
-}
-
-/**
  * Formats the summary string of a finished job (design §7.2, mockup BResult.dc.html).
  * E.g. "保存 4 件 · 失敗 1 件 · 対象外 1 件"
  */
