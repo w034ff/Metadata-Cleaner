@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DropZone, SegmentedControl } from "./components";
+import { DropZone } from "./components";
 import { AboutDialog } from "./features/about";
 import { ItemDetails } from "./features/details";
 import {
@@ -11,7 +11,7 @@ import { JobFooter, JobSummaryBanner, useJobEvents } from "./features/job";
 import { OutputDirError, OutputDirField } from "./features/output";
 import { useSettingsAutoSave } from "./features/settings";
 import { useBlockBrowserShortcuts } from "./features/shortcuts";
-import { getTranslations } from "./i18n";
+import { getTranslations, isLanguage, SUPPORTED_LANGUAGES } from "./i18n";
 import { addFiles, getSettings, type Settings } from "./ipc";
 import {
   AppStateProvider,
@@ -99,18 +99,24 @@ export function AppShell() {
             {t.app.title}
           </h1>
           <div className="app-header-actions">
-            <SegmentedControl
-              label={t.app.languageLabel}
+            <select
+              className="lang-select"
+              aria-label={t.app.languageLabel}
               value={language.language}
               disabled={isJobRunning}
-              options={[
-                { value: "ja", label: t.app.languages.ja },
-                { value: "en", label: t.app.languages.en },
-              ]}
-              onChange={(lang) =>
-                dispatch({ type: "SET_LANGUAGE", language: lang })
-              }
-            />
+              onChange={(event) => {
+                const lang = event.target.value;
+                if (isLanguage(lang)) {
+                  dispatch({ type: "SET_LANGUAGE", language: lang });
+                }
+              }}
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang} value={lang}>
+                  {t.app.languages[lang]}
+                </option>
+              ))}
+            </select>
             <button
               ref={aboutButtonRef}
               type="button"

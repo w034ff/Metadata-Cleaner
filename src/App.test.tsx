@@ -16,6 +16,15 @@ function mockAppIpc(handler: Parameters<typeof mockIPC>[0]) {
   mockIPC(handler, { shouldMockEvents: true });
 }
 
+/** The header's language selector; its accessible name follows the language. */
+function languageSelect(): HTMLElement {
+  return screen.getByRole("combobox");
+}
+
+function selectLanguage(lang: "ja" | "en") {
+  fireEvent.change(languageSelect(), { target: { value: lang } });
+}
+
 const SAVED_SETTINGS: Settings = {
   language: "en",
   outputDir: { dirLabel: "CleanedFiles" },
@@ -44,30 +53,28 @@ describe("App", () => {
   });
 
   describe("header and layout", () => {
-    it("shows app title, language toggle, and about button in the header", () => {
+    it("shows app title, language selector, and about button in the header", () => {
       mockAppIpc(() => new Promise(() => {}));
       render(<App initialNavLang="ja" initialSettings={null} />);
 
       expect(
         screen.getByRole("heading", { name: "Metadata Cleaner" }),
       ).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "言語" })).toHaveValue("ja");
       expect(
-        screen.getByRole("button", { name: "日本語" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "English" }),
+        screen.getByRole("option", { name: "English" }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "このアプリについて" }),
       ).toBeInTheDocument();
     });
 
-    it("switches language when language toggle is clicked", () => {
+    it("switches language when another language is selected", () => {
       mockAppIpc(() => new Promise(() => {}));
       render(<App initialNavLang="ja" initialSettings={null} />);
 
       // Switch to English
-      fireEvent.click(screen.getByRole("button", { name: "English" }));
+      selectLanguage("en");
       expect(screen.getByText("Output folder")).toBeInTheDocument();
       expect(screen.getByText("No files selected")).toBeInTheDocument();
       expect(
@@ -77,7 +84,7 @@ describe("App", () => {
       ).toBeInTheDocument();
 
       // Switch back to Japanese
-      fireEvent.click(screen.getByRole("button", { name: "日本語" }));
+      selectLanguage("ja");
       expect(screen.getByText("保存先フォルダ")).toBeInTheDocument();
       expect(screen.getByText("ファイルがありません")).toBeInTheDocument();
       expect(
@@ -142,10 +149,7 @@ describe("App", () => {
       await flush();
 
       // The saved language wins over the OS language
-      expect(screen.getByRole("button", { name: "English" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(languageSelect()).toHaveValue("en");
       expect(screen.getByText("Output folder")).toBeInTheDocument();
       expect(screen.getByText("CleanedFiles")).toBeInTheDocument();
     });
@@ -157,10 +161,7 @@ describe("App", () => {
       render(<App initialNavLang="ja-JP" />);
       await flush();
 
-      expect(screen.getByRole("button", { name: "日本語" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(languageSelect()).toHaveValue("ja");
     });
 
     it("shows nothing until the settings are read", () => {
@@ -185,10 +186,7 @@ describe("App", () => {
       expect(
         screen.getByRole("heading", { name: "Metadata Cleaner" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "日本語" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(languageSelect()).toHaveValue("ja");
       expect(screen.getByText("未選択")).toBeInTheDocument();
     });
 
@@ -202,10 +200,7 @@ describe("App", () => {
       expect(
         screen.getByRole("heading", { name: "Metadata Cleaner" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "日本語" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      expect(languageSelect()).toHaveValue("ja");
     });
   });
 
@@ -227,12 +222,12 @@ describe("App", () => {
       const saved = mockSaves();
       render(<App initialNavLang="ja" initialSettings={null} />);
 
-      fireEvent.click(screen.getByRole("button", { name: "English" }));
+      selectLanguage("en");
       act(() => {
         vi.advanceTimersByTime(SETTINGS_SAVE_DEBOUNCE_MS - 1);
       });
-      fireEvent.click(screen.getByRole("button", { name: "日本語" }));
-      fireEvent.click(screen.getByRole("button", { name: "English" }));
+      selectLanguage("ja");
+      selectLanguage("en");
       act(() => {
         vi.advanceTimersByTime(SETTINGS_SAVE_DEBOUNCE_MS - 1);
       });
@@ -271,8 +266,8 @@ describe("App", () => {
         />,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "English" }));
-      fireEvent.click(screen.getByRole("button", { name: "日本語" }));
+      selectLanguage("en");
+      selectLanguage("ja");
       await act(async () => {
         vi.advanceTimersByTime(SETTINGS_SAVE_DEBOUNCE_MS * 2);
       });
