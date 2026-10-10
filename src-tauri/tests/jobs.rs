@@ -548,3 +548,48 @@ fn start_clean_internal_full_lifecycle() {
     assert_eq!(recorder.is_running_at_finished(), Some(false));
     assert!(!app_state.is_running.load(Ordering::SeqCst));
 }
+
+#[test]
+fn start_clean_missing_output_dir_returns_error() {
+    let app_state = state();
+    let temp_in = TempDir::new().unwrap();
+    let path = copy_fixture(temp_in.path(), "full.jpg", "full.jpg");
+    let add_res = add_files(&app_state, &[path]).unwrap();
+    let id = add_res.added[0].id;
+
+    // A path that does not exist
+    let nonexistent = temp_in.path().join("nonexistent_folder");
+    *app_state.output_dir.lock().unwrap() = Some(nonexistent);
+
+    let recorder = TestRecorder::new();
+    let err = start_clean_internal(&app_state, &[id], recorder.callbacks()).unwrap_err();
+    assert_eq!(err.code, ErrorCode::OutputDirMissing);
+    assert!(!app_state.is_running.load(Ordering::SeqCst));
+}
+
+#[cfg(unix)]
+#[test]
+fn start_clean_unwritable_output_dir_returns_error() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let app_state = state();
+    let temp_in = TempDir::new().unwrap();
+    let temp_out = TempDir::new().unwrap();
+    let path = copy_fixture(temp_in.path(), "full.jpg", "full.jpg");
+    let add_res = add_files(&app_state, &[path]).unwrap();
+    let id = add_res.added[0].id;
+
+    // Make the output folder read-only (0o555: r-x)
+    fs::set_permissions(temp_out.path(), fs::Permissions::from_mode(0o555)).unwrap();
+
+    *app_state.output_dir.lock().unwrap() = Some(temp_out.path().to_path_buf());
+
+    let recorder = TestRecorder::new();
+    let err = start_clean_internal(&app_state, &[id], recorder.callbacks()).unwrap_err();
+
+    // Restore permissions so TempDir clean-up succeeds
+    let _ = fs::set_permissions(temp_out.path(), fs::Permissions::from_mode(0o755));
+
+    assert_eq!(err.code, ErrorCode::OutputDirNotWritable);
+    assert!(!app_state.is_running.load(Ordering::SeqCst));
+}

@@ -184,15 +184,19 @@ pub fn parse_kept_info(tiff: &[u8]) -> (Option<u8>, Option<KeptInfo>) {
 
 /// Formats GPS latitude or longitude from rational [deg, min, sec] values and optional ref string.
 fn format_gps_coord(field: &exif::Field, ref_field: Option<&exif::Field>) -> String {
-    let rationals = match &field.value {
-        Value::Rational(v) if v.len() >= 3 => v,
+    let (d, m, s) = match &field.value {
+        Value::Rational(v) if v.len() >= 3 => (v[0].to_f64(), v[1].to_f64(), v[2].to_f64()),
+        Value::SRational(v) if v.len() >= 3 => (v[0].to_f64(), v[1].to_f64(), v[2].to_f64()),
         _ => return field.display_value().to_string(),
     };
 
+    if d < 0.0 || m < 0.0 || s < 0.0 {
+        return field.display_value().to_string();
+    }
+
     // Some writers put a fractional value in the degrees or minutes and zeros
     // after it, so the parts are recombined before splitting into D/M/S.
-    let total =
-        rationals[0].to_f64() + rationals[1].to_f64() / 60.0 + rationals[2].to_f64() / 3600.0;
+    let total = d + m / 60.0 + s / 3600.0;
     if !total.is_finite() || total < 0.0 {
         return field.display_value().to_string();
     }
@@ -763,6 +767,51 @@ mod tests {
             .collect();
         assert!(values.contains(&(Field::Latitude, DetailValue::Text("12°30′0″ S".to_string()))));
         assert!(values.contains(&(Field::Longitude, DetailValue::Text("65°43′30″".to_string()))));
+    }
+
+    #[test]
+    fn test_gps_srational_formatting() {
+        let srational = |num, denom| exif::SRational { num, denom };
+        let tiff = write_tiff(&[
+            exif::Field {
+                tag: Tag::GPSLatitudeRef,
+                ifd_num: In::PRIMARY,
+                value: Value::Ascii(vec![b"N".to_vec()]),
+            },
+            // Positive SRational: 60/1, 8/1, 4814/100 -> 60°8′48.14″ N
+            exif::Field {
+                tag: Tag::GPSLatitude,
+                ifd_num: In::PRIMARY,
+                value: Value::SRational(vec![
+                    srational(60, 1),
+                    srational(8, 1),
+                    srational(4814, 100),
+                ]),
+            },
+            // Negative SRational: falls back to raw display_value()
+            exif::Field {
+                tag: Tag::GPSLongitude,
+                ifd_num: In::PRIMARY,
+                value: Value::SRational(vec![
+                    srational(-60, 1),
+                    srational(8, 1),
+                    srational(4814, 100),
+                ]),
+            },
+        ]);
+        let values: Vec<_> = collect_details(&tiff)
+            .into_iter()
+            .map(|(_, e)| (e.field, e.value))
+            .collect();
+        assert!(values.contains(&(
+            Field::Latitude,
+            DetailValue::Text("60°8′48.14″ N".to_string())
+        )));
+        let lon = values.iter().find(|(f, _)| *f == Field::Longitude).unwrap();
+        match &lon.1 {
+            DetailValue::Text(s) => assert!(s.contains("-60")),
+            _ => panic!("expected Text value for longitude"),
+        }
     }
 
     #[test]

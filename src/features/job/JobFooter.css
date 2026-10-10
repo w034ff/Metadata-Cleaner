@@ -19,6 +19,12 @@
   margin-left: auto;
 }
 
+.job-footer-status-success {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-success);
+}
+
 .job-footer-status-error {
   font-size: 13px;
   font-weight: 500;

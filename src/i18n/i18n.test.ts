@@ -20,6 +20,8 @@ const ALL_ERROR_CODES: ErrorCode[] = [
   "WorkerTimeout",
   "VerifyFailed",
   "SameFolderAsSource",
+  "OutputDirMissing",
+  "OutputDirNotWritable",
   "ReadFailed",
   "WriteFailed",
   "JobRunning",
@@ -48,7 +50,7 @@ describe("i18n", () => {
   });
 
   describe("formatErrorMessage", () => {
-    it("formats all 15 error codes in Japanese", () => {
+    it("formats all 17 error codes in Japanese", () => {
       expect(formatErrorMessage("UnsupportedFormat", null, "ja")).toBe(
         "対応していない形式です",
       );
@@ -79,6 +81,12 @@ describe("i18n", () => {
       expect(formatErrorMessage("SameFolderAsSource", null, "ja")).toBe(
         "元のファイルと同じフォルダには保存できません。別のフォルダを選んでください",
       );
+      expect(formatErrorMessage("OutputDirMissing", null, "ja")).toBe(
+        "保存先のフォルダが見つかりません。フォルダを選び直してください",
+      );
+      expect(formatErrorMessage("OutputDirNotWritable", null, "ja")).toBe(
+        "保存先のフォルダに書き込めません",
+      );
       expect(formatErrorMessage("ReadFailed", null, "ja")).toBe(
         "ファイルの読み込みに失敗しました",
       );
@@ -96,7 +104,7 @@ describe("i18n", () => {
       );
     });
 
-    it("formats all 15 error codes in English", () => {
+    it("formats all 17 error codes in English", () => {
       expect(formatErrorMessage("UnsupportedFormat", null, "en")).toBe(
         "Unsupported file format",
       );
@@ -126,6 +134,12 @@ describe("i18n", () => {
       );
       expect(formatErrorMessage("SameFolderAsSource", null, "en")).toBe(
         "Choose a folder other than the one the files are in",
+      );
+      expect(formatErrorMessage("OutputDirMissing", null, "en")).toBe(
+        "The output folder can't be found. Choose a folder again.",
+      );
+      expect(formatErrorMessage("OutputDirNotWritable", null, "en")).toBe(
+        "Can't write to the output folder",
       );
       expect(formatErrorMessage("ReadFailed", null, "en")).toBe(
         "Failed to read file",

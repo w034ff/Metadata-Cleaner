@@ -103,6 +103,35 @@ describe("JobFooter", () => {
     ).toBeDisabled();
   });
 
+  it("displays success summary with checkmark after all items succeed", () => {
+    const baseState = createInitialAppState("ja");
+    const state = {
+      ...baseState,
+      items: sampleItems,
+      job: {
+        ...baseState.job,
+        phase: "finished" as const,
+        finished: {
+          succeeded: 1,
+          failed: 0,
+          unprocessed: 0,
+          cancelled: false,
+        },
+      },
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <JobFooter />
+      </AppStateProvider>,
+    );
+
+    const statusEl = screen.getByText(/すべて完了しました/);
+    expect(statusEl).toBeInTheDocument();
+    expect(statusEl).toHaveTextContent("✓ すべて完了しました");
+    expect(statusEl).toHaveClass("job-footer-status-success");
+  });
+
   it("displays failure summary after job finishes with errors", () => {
     const baseState = createInitialAppState("ja");
     const state = {
@@ -126,7 +155,69 @@ describe("JobFooter", () => {
       </AppStateProvider>,
     );
 
-    expect(screen.getByText(/失敗があります/)).toBeInTheDocument();
+    const statusEl = screen.getByText(/失敗があります/);
+    expect(statusEl).toBeInTheDocument();
+    expect(statusEl).toHaveTextContent("✕ 失敗があります");
+    expect(statusEl).toHaveClass("job-footer-status-error");
+  });
+
+  it("displays neutral cancelled summary without symbol when cancelled without failures", () => {
+    const baseState = createInitialAppState("ja");
+    const state = {
+      ...baseState,
+      items: sampleItems,
+      job: {
+        ...baseState.job,
+        phase: "finished" as const,
+        finished: {
+          succeeded: 1,
+          failed: 0,
+          unprocessed: 2,
+          cancelled: true,
+        },
+      },
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <JobFooter />
+      </AppStateProvider>,
+    );
+
+    const statusEl = screen.getByText("キャンセルしました");
+    expect(statusEl).toBeInTheDocument();
+    expect(statusEl).not.toHaveTextContent("✓");
+    expect(statusEl).not.toHaveTextContent("✕");
+    expect(statusEl).toHaveClass("hint");
+  });
+
+  it("displays failure summary when cancelled with failures", () => {
+    const baseState = createInitialAppState("ja");
+    const state = {
+      ...baseState,
+      items: sampleItems,
+      job: {
+        ...baseState.job,
+        phase: "finished" as const,
+        finished: {
+          succeeded: 1,
+          failed: 1,
+          unprocessed: 1,
+          cancelled: true,
+        },
+      },
+    };
+
+    render(
+      <AppStateProvider initialState={state}>
+        <JobFooter />
+      </AppStateProvider>,
+    );
+
+    const statusEl = screen.getByText(/失敗があります/);
+    expect(statusEl).toBeInTheDocument();
+    expect(statusEl).toHaveTextContent("✕ 失敗があります");
+    expect(statusEl).toHaveClass("job-footer-status-error");
   });
 
   it("counts only valid items and disables button when only error items exist", () => {

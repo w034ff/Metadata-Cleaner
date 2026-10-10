@@ -3,18 +3,25 @@ import { formatMessage, getTranslations } from "../../i18n";
 import { addFiles, removeItems } from "../../ipc";
 import { isJobActive, useAppDispatch, useAppState } from "../../state";
 
+import { formatSkippedMessage } from "./skipped";
+
 export function ItemListHeader() {
-  const { language, items, job } = useAppState();
+  const { language, items, job, lastSkipped } = useAppState();
   const dispatch = useAppDispatch();
   const t = getTranslations(language.language);
 
   const isBusy = isJobActive(job);
+  const skippedMessage = formatSkippedMessage(lastSkipped, language.language);
 
   const handleAddFiles = useCallback(async () => {
     try {
       const result = await addFiles("files");
-      if (result !== null && result.added.length > 0) {
-        dispatch({ type: "ADD_ITEMS", items: result.added });
+      if (result !== null) {
+        dispatch({
+          type: "ADD_ITEMS",
+          items: result.added,
+          skipped: result.skipped,
+        });
       }
     } catch {
       // IPC errors handled by backend/dialog
@@ -24,8 +31,12 @@ export function ItemListHeader() {
   const handleAddFolder = useCallback(async () => {
     try {
       const result = await addFiles("folder");
-      if (result !== null && result.added.length > 0) {
-        dispatch({ type: "ADD_ITEMS", items: result.added });
+      if (result !== null) {
+        dispatch({
+          type: "ADD_ITEMS",
+          items: result.added,
+          skipped: result.skipped,
+        });
       }
     } catch {
       // IPC errors handled by backend/dialog
@@ -53,6 +64,7 @@ export function ItemListHeader() {
     >
       <span className="label">
         {formatMessage(t.itemList.count, { count: items.length })}
+        {skippedMessage ? ` ${skippedMessage}` : ""}
       </span>
       <div
         style={{

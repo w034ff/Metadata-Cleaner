@@ -19,6 +19,10 @@
   border-left: 3px solid var(--color-error);
 }
 
+.job-summary-banner-neutral {
+  border-left: 3px solid var(--color-border-subtle);
+}
+
 .job-summary-icon-success {
   color: var(--color-success);
 }

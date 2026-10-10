@@ -86,4 +86,49 @@ describe("JobSummaryBanner", () => {
     const banner = screen.getByRole("status");
     expect(banner).toHaveTextContent("保存 4 件 · 失敗 1 件 · 対象外 1 件");
   });
+
+  it("renders cancelled banner without icon when cancelled without failures", () => {
+    render(
+      <AppStateProvider initialState={jaState}>
+        <JobSummaryBanner
+          finished={{
+            succeeded: 2,
+            failed: 0,
+            unprocessed: 3,
+            cancelled: true,
+          }}
+        />
+      </AppStateProvider>,
+    );
+
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveClass("job-summary-banner-neutral");
+    expect(banner).toHaveTextContent(
+      "キャンセルしました · 保存 2 件 · 未処理 3 件",
+    );
+    expect(banner).not.toHaveTextContent("✓");
+    expect(banner).not.toHaveTextContent("✕");
+  });
+
+  it("renders failure banner with cross icon when cancelled with failures", () => {
+    render(
+      <AppStateProvider initialState={jaState}>
+        <JobSummaryBanner
+          finished={{
+            succeeded: 2,
+            failed: 1,
+            unprocessed: 2,
+            cancelled: true,
+          }}
+        />
+      </AppStateProvider>,
+    );
+
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveClass("job-summary-banner-warning");
+    expect(banner).toHaveTextContent(
+      "キャンセルしました · 保存 2 件 · 失敗 1 件 · 未処理 2 件",
+    );
+    expect(banner).toHaveTextContent("✕");
+  });
 });

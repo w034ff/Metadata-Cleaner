@@ -43,7 +43,7 @@ npm run manual-test:files -- <出力先フォルダ>
 これにより、次のファイルおよびディレクトリが生成されます:
 - `too-large.jpg`: 268,435,457 バイト（`MAX_IMAGE_FILE_BYTES` 256 MiB 超過）
 - `too-large.pdf`: 536,870,913 バイト（`MAX_PDF_FILE_BYTES` 512 MiB 超過）
-- `cancel-batch/`: 100 ファイル（`cancel_001.pdf`〜`cancel_050.pdf`、`cancel_051.jpg`〜`cancel_100.jpg`。キャンセル確認用の一括ファイル群）
+- `cancel-batch/`: 50 ファイル（`cancel_001.pdf`〜`cancel_050.pdf`。間接オブジェクトを 40,000 個持ち、1 ファイルあたり約 0.8〜1.0 秒、全体で約 17〜18 秒かかる PDF の写し。キャンセル確認用の一括ファイル群）
 
 ### 2. フィクスチャの配置場所
 
@@ -88,6 +88,9 @@ npm run manual-test:files -- <出力先フォルダ>
 
 1. アプリを起動する。一覧が空のとき、ドロップ領域に「ファイルまたはフォルダをここにドロップ」「JPEG、PNG、WebP、PDF」「ファイルを追加」「フォルダを追加」が表示され、右側の詳細欄に「写っているもの、PDF の本文、ファイル名は消せません」が表示されていることを確認する。
 2. 「ファイルを追加」またはドラッグ＆ドロップで、上記のフィクスチャ画像（計 10 ファイル）を追加する。
+   - サブフォルダを含むフォルダや非対応形式のファイルを追加したとき、一覧の見出し（「ファイル {n} 件」の後ろ）に「（対象外 1 件：サブフォルダ）」のように除外された件数と理由が表示されることを確認する。
+   - 対象外のみを追加して一覧が空のままの場合は、ドロップ領域の下にも同じ文が表示されることを確認する。
+   - 次の追加や「すべて外す」をクリックしたときに、この表示が消えることを確認する。
 3. 一覧の表示を確認する:
    - 「ファイル名」「形式」「大きさ」「見つかった情報」「状態」の各列が表示されていること。
    - `full.jpg`、`orient6.jpg`、`full.png`、`full.webp` などの位置情報を含む画像には、オレンジ色の「位置情報」チップ（ピン記号付き）が表示されること。
@@ -189,7 +192,8 @@ npm run manual-test:files -- <出力先フォルダ>
 - `encrypted.pdf`、`restricted.pdf`（暗号化 PDF）
 - `signed.pdf`（電子署名付き PDF）
 - `too-large.jpg`、`too-large.pdf`（上限超過ファイル）
-- 書き込み権限のない保存先フォルダ（後述の手順で作成）
+- 書き込み権限のない保存先フォルダ、存在しない保存先フォルダ（後述の手順で作成）
+- サブフォルダを含むフォルダ、非対応形式のファイル（対象外件数表示の確認用）
 
 ### 操作と期待する結果
 
@@ -249,8 +253,8 @@ npm run manual-test:files -- <出力先フォルダ>
       ```
 - 正常な画像（`clean.jpg` 等）を追加し、上記フォルダを保存先に指定して「消して保存」をクリックする。
 - **期待結果**:
-  - 処理が実行され、書き込み失敗により行の状態が赤字で「✕ 失敗」、理由が「ファイルの書き込みに失敗しました」になる。
-  - 上部バナーに「失敗 1 件」、下部バーに赤字で「✕ 失敗があります」と表示される。
+  - 処理は開始されない（進捗バーは出ず、ファイルの処理は始まらない）。
+  - 一覧の上の帯に「保存先のフォルダに書き込めません」が表示される。
   - アプリがクラッシュすることなく継続操作可能であること。
 - 後片付け:
   - **Linux**: `chmod 755 /tmp/mcleaner-readonly && rm -rf /tmp/mcleaner-readonly`
@@ -258,7 +262,25 @@ npm run manual-test:files -- <出力先フォルダ>
     - コマンドプロンプト: `icacls C:\test-readonly /remove:d "%USERNAME%"`、`rmdir C:\test-readonly`
     - PowerShell: `icacls C:\test-readonly /remove:d "${env:USERNAME}"`、`Remove-Item C:\test-readonly`
 
-#### 6. ワーカーの異常終了・時間切れ（自動テストでの確認）
+##### 5c. 存在しないフォルダ
+- 正常な画像（`clean.jpg` 等）を追加し、テスト用フォルダ（例: `/tmp/mcleaner-missing` または `C:\test-missing`）を保存先に指定したのち、そのフォルダを手動で削除する。
+- 「消して保存」をクリックする。
+- **期待結果**:
+  - 処理は開始されない（進捗バーは出ず、ファイルの処理は始まらない）。
+  - 一覧の上の帯に「保存先のフォルダが見つかりません。フォルダを選び直してください」が表示される。
+  - アプリがクラッシュすることなく継続操作可能であること。
+
+#### 6. 対象外の件数表示（サブフォルダ、非対応形式、重複）
+- サブフォルダを含むフォルダ（例: 中にサブフォルダが存在するフォルダ）を「フォルダを追加」またはドラッグ＆ドロップで追加する。
+  - **期待結果**: 一覧の見出し（「ファイル {n} 件」の後ろ）に「（対象外 1 件：サブフォルダ）」が表示される。
+- 非対応形式のファイルを追加する。
+  - **期待結果**: 見出しの後ろに「（対象外 1 件：非対応の形式）」が表示される。
+- すでに一覧にあるファイルを再度追加する。
+  - **期待結果**: 見出しの後ろに「（対象外 1 件：重複）」が表示される。
+- 対象外のみを追加して一覧が空の場合は、ドロップ領域の下にも同じ文が表示されること。
+- 次のファイル追加や「すべて外す」をクリックしたときに表示が消えること。
+
+#### 7. ワーカーの異常終了・時間切れ（自動テストでの確認）
 
 配布用バイナリにはテスト用のクラッシュフック（`test-hooks` 機能）はセキュリティ上組み込まれていないため、この項目は自動テストスイートで保証されていることを確認します。
 
@@ -273,6 +295,14 @@ npm run manual-test:files -- <出力先フォルダ>
     - `recovers_after_worker_times_out`（タイムアウト後にプールが回復すること）
   - `src-tauri/tests/jobs.rs`:
     - `worker_crashed_isolated_and_continues_batch`（一括処理中に 1 つの PDF でワーカーがクラッシュしても後続の処理が継続すること）
+    - `start_clean_missing_output_dir_returns_error`（存在しない保存先フォルダでエラーを返すこと）
+    - `start_clean_unwritable_output_dir_returns_error`（書き込み権限のない保存先フォルダでエラーを返すこと）
+  - `src/features/output/OutputDirError.test.tsx`:
+    - `renders error display when job has OutputDirMissing error`（存在しない保存先エラーを帯に表示すること）
+    - `renders error display when job has OutputDirNotWritable error`（書き込めない保存先エラーを帯に表示すること）
+  - `src/features/items/skipped.test.ts`:
+    - `formats single reason: folders only`（対象外件数と理由のフォーマット）
+    - `formats combination of all three reasons in correct order`（3 種類の理由の組み合わせ）
 - **確認手順**:
   端末で以下のコマンドを実行する（`test-hooks` 機能を有効にするため、必ず `--features test-hooks` を指定する）:
   ```bash
@@ -325,23 +355,23 @@ npm run manual-test:files -- <出力先フォルダ>
 
 ### 準備（使うファイル）
 
-- `cancel-batch/`（`npm run manual-test:files` で生成した 100 ファイル）
+- `cancel-batch/`（`npm run manual-test:files` で生成した 50 ファイル）
 - 空の出力先フォルダ
 
 ### 操作
 
 1. 空の出力先フォルダを用意して指定する。
-2. 「フォルダを追加」またはドラッグ＆ドロップで `cancel-batch/` 内の全 100 ファイルを追加する。
-3. 下部バーに「100 件から情報を消して保存します」と表示されていることを確認し、「消して保存」をクリックする。
-4. 下部バーの進捗バーが進み、数件（例: 2〜5 件程度）処理されたタイミングで「キャンセル」ボタンをクリックする。
+2. 「フォルダを追加」またはドラッグ＆ドロップで `cancel-batch/` 内の全 50 ファイルを追加する。
+3. 下部バーに「50 件から情報を消して保存します」と表示されていることを確認し、「消して保存」をクリックする。
+4. 1 ファイルあたり約 0.8〜1.0 秒、並行処理（4 並行）で全体が約 17〜18 秒かかるため、下部バーの進捗バーが進んでいるタイミングで「キャンセル」ボタンをクリックする。
 
 ### 期待する結果
 
 - 「キャンセル」をクリックした直後にボタンの表示が「キャンセル中…」に変わり、操作が無効化される。
 - 処理中だった現在のファイルが保存された後、直ちに処理が停止し、ボタンの表示が「消して保存」に戻る。
-- 上部バナーに「キャンセルしました · 保存 {完了数} 件 · 未処理 {未処理数} 件」（例: 「キャンセルしました · 保存 3 件 · 未処理 97 件」）が表示される。
-- 表の各行の状態は、処理中だったファイルまで（保存されたファイル）が緑の「✓ 完了」、まだ始まっていなかったファイルが「キャンセル」になる。
-- 下部バーに「キャンセルしました」と表示される。
+- 上部バナーに「キャンセルしました · 保存 {完了数} 件 · 未処理 {未処理数} 件」（例: 「キャンセルしました · 保存 14 件 · 未処理 36 件」）が表示され、警告アイコン（✕ など）のない中立な表示となること。
+- 表の各行の状態は、処理中だったファイルまで（保存されたファイル）が緑の「✓ 完了」、まだ始まっていなかったファイルが「キャンセル」になる。未処理のファイルは失敗に数えられないこと。
+- 下部バーに記号なしで「キャンセルしました」と表示される（失敗がない場合は赤の「✕」や「失敗があります」にならないこと）。
 - 保存先フォルダの内容をコマンドで確認する:
   - **Linux**:
     ```bash
@@ -362,6 +392,12 @@ npm run manual-test:files -- <出力先フォルダ>
   - `criterion 9: immediately enters cancelling state when cancel is pressed (キャンセルを押すと直ちに「キャンセル中…」になる)`
 - `src/features/job/useJobRunner.test.tsx`:
   - `cancels running job`
+- `src/features/job/jobSummary.test.ts`:
+  - `returns cancelled when cancelled without failures (unprocessed not counted as failure)`
+  - `returns failure when cancelled but has failures`
+- `src/features/job/JobFooter.test.tsx`:
+  - `displays neutral cancelled summary without symbol when cancelled without failures`
+  - `displays failure summary when cancelled with failures`
 
 ---
 

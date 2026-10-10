@@ -16,6 +16,9 @@ export const ERROR_MESSAGES_JA: Record<ErrorCode, string> = {
   VerifyFailed: "情報を消しきれなかったため、保存しませんでした",
   SameFolderAsSource:
     "元のファイルと同じフォルダには保存できません。別のフォルダを選んでください",
+  OutputDirMissing:
+    "保存先のフォルダが見つかりません。フォルダを選び直してください",
+  OutputDirNotWritable: "保存先のフォルダに書き込めません",
   ReadFailed: "ファイルの読み込みに失敗しました",
   WriteFailed: "ファイルの書き込みに失敗しました",
   JobRunning: "処理中は操作できません",
@@ -35,6 +38,8 @@ export const ERROR_MESSAGES_EN: Record<ErrorCode, string> = {
   WorkerTimeout: "Processing the PDF took too long and was stopped",
   VerifyFailed: "Couldn't remove all the information, so the file wasn't saved",
   SameFolderAsSource: "Choose a folder other than the one the files are in",
+  OutputDirMissing: "The output folder can't be found. Choose a folder again.",
+  OutputDirNotWritable: "Can't write to the output folder",
   ReadFailed: "Failed to read file",
   WriteFailed: "Failed to write file",
   JobRunning: "Not available while processing",

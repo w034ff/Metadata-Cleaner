@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DropZone, SegmentedControl } from "./components";
 import { AboutDialog } from "./features/about";
 import { ItemDetails } from "./features/details";
-import { ItemList, useItemsDropped } from "./features/items";
+import {
+  formatSkippedMessage,
+  ItemList,
+  useItemsDropped,
+} from "./features/items";
 import { JobFooter, JobSummaryBanner, useJobEvents } from "./features/job";
 import { OutputDirError, OutputDirField } from "./features/output";
 import { useSettingsAutoSave } from "./features/settings";
@@ -24,9 +28,10 @@ export function AppShell() {
   useItemsDropped();
   useSettingsAutoSave();
 
-  const { language, items, outputDir, job } = useAppState();
+  const { language, items, outputDir, job, lastSkipped } = useAppState();
   const dispatch = useAppDispatch();
   const t = getTranslations(language.language);
+  const skippedMessage = formatSkippedMessage(lastSkipped, language.language);
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const aboutButtonRef = useRef<HTMLButtonElement>(null);
@@ -45,8 +50,12 @@ export function AppShell() {
   const handleAddFiles = useCallback(async () => {
     try {
       const result = await addFiles("files");
-      if (result !== null && result.added.length > 0) {
-        dispatch({ type: "ADD_ITEMS", items: result.added });
+      if (result !== null) {
+        dispatch({
+          type: "ADD_ITEMS",
+          items: result.added,
+          skipped: result.skipped,
+        });
       }
     } catch {
       // IPC errors handled by backend/dialog
@@ -56,8 +65,12 @@ export function AppShell() {
   const handleAddFolder = useCallback(async () => {
     try {
       const result = await addFiles("folder");
-      if (result !== null && result.added.length > 0) {
-        dispatch({ type: "ADD_ITEMS", items: result.added });
+      if (result !== null) {
+        dispatch({
+          type: "ADD_ITEMS",
+          items: result.added,
+          skipped: result.skipped,
+        });
       }
     } catch {
       // IPC errors handled by backend/dialog
@@ -138,14 +151,19 @@ export function AppShell() {
             <OutputDirError />
 
             {items.length === 0 ? (
-              <DropZone
-                title={t.dropZone.title}
-                description={t.dropZone.description}
-                addFilesLabel={t.dropZone.addFiles}
-                addFolderLabel={t.dropZone.addFolder}
-                onAddFiles={handleAddFiles}
-                onAddFolder={handleAddFolder}
-              />
+              <>
+                <DropZone
+                  title={t.dropZone.title}
+                  description={t.dropZone.description}
+                  addFilesLabel={t.dropZone.addFiles}
+                  addFolderLabel={t.dropZone.addFolder}
+                  onAddFiles={handleAddFiles}
+                  onAddFolder={handleAddFolder}
+                />
+                {skippedMessage !== null && (
+                  <p className="hint drop-zone-skipped">{skippedMessage}</p>
+                )}
+              </>
             ) : (
               <ItemList />
             )}

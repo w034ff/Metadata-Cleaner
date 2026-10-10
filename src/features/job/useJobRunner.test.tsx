@@ -159,6 +159,34 @@ describe("useJobRunner", () => {
     });
   });
 
+  it("handles start_clean failure for OutputDirMissing and OutputDirNotWritable", async () => {
+    mockIPC((cmd) => {
+      if (cmd === "start_clean") {
+        throw { code: "OutputDirMissing", detail: null };
+      }
+      return null;
+    });
+
+    const { result } = renderHook(
+      () => {
+        const runner = useJobRunner();
+        const state = useAppState();
+        return { runner, state };
+      },
+      { wrapper: createWrapper() },
+    );
+
+    await act(async () => {
+      await result.current.runner.startJob();
+    });
+
+    expect(result.current.state.job.phase).toBe("idle");
+    expect(result.current.state.job.error).toEqual({
+      code: "OutputDirMissing",
+      detail: null,
+    });
+  });
+
   it("cancels running job", async () => {
     let cancelCalled = false;
     mockIPC((cmd) => {

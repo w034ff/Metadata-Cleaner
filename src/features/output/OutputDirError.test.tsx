@@ -13,22 +13,70 @@ describe("OutputDirError", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders nothing when job error is not related to output directory", () => {
+  it("renders error display when job has OutputDirMissing error", () => {
     const state = createInitialAppState("ja");
     const stateWithError = {
       ...state,
       job: {
         ...state.job,
-        error: { code: "UnsupportedFormat" as const, detail: null },
+        error: { code: "OutputDirMissing" as const, detail: null },
       },
     };
 
-    const { container } = render(
+    render(
       <AppStateProvider initialState={stateWithError}>
         <OutputDirError />
       </AppStateProvider>,
     );
-    expect(container).toBeEmptyDOMElement();
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByText(/保存先のフォルダが見つかりません/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders error display when job has OutputDirNotWritable error", () => {
+    const state = createInitialAppState("ja");
+    const stateWithError = {
+      ...state,
+      job: {
+        ...state.job,
+        error: { code: "OutputDirNotWritable" as const, detail: null },
+      },
+    };
+
+    render(
+      <AppStateProvider initialState={stateWithError}>
+        <OutputDirError />
+      </AppStateProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByText(/保存先のフォルダに書き込めません/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders error display when job has other errors", () => {
+    const state = createInitialAppState("ja");
+    const stateWithError = {
+      ...state,
+      job: {
+        ...state.job,
+        error: { code: "WriteFailed" as const, detail: null },
+      },
+    };
+
+    render(
+      <AppStateProvider initialState={stateWithError}>
+        <OutputDirError />
+      </AppStateProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByText(/ファイルの書き込みに失敗しました/),
+    ).toBeInTheDocument();
   });
 
   it("renders error display when job has SameFolderAsSource error", () => {

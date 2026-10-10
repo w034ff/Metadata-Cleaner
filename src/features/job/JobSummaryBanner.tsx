@@ -1,7 +1,7 @@
 import type { JobFinishedPayload } from "../../ipc";
 import { useAppState } from "../../state";
 import "./JobSummaryBanner.css";
-import { formatJobSummary, isJobSuccessful } from "./jobSummary";
+import { formatJobSummary, jobOutcome } from "./jobSummary";
 
 export interface JobSummaryBannerProps {
   finished: JobFinishedPayload | null;
@@ -18,24 +18,32 @@ export function JobSummaryBanner({ finished }: JobSummaryBannerProps) {
   }
 
   const unreadableCount = items.filter((it) => it.error !== null).length;
-  const successful = isJobSuccessful(finished, unreadableCount);
+  const outcome = jobOutcome(finished);
   const text = formatJobSummary(finished, language.language, unreadableCount);
 
   return (
     <div
       role="status"
       className={`job-summary-banner ${
-        successful ? "job-summary-banner-success" : "job-summary-banner-warning"
+        outcome === "success"
+          ? "job-summary-banner-success"
+          : outcome === "failure"
+            ? "job-summary-banner-warning"
+            : "job-summary-banner-neutral"
       }`}
     >
-      <span
-        className={`job-summary-icon ${
-          successful ? "job-summary-icon-success" : "job-summary-icon-warning"
-        }`}
-        aria-hidden="true"
-      >
-        {successful ? "✓" : "✕"}
-      </span>
+      {outcome !== "cancelled" && (
+        <span
+          className={`job-summary-icon ${
+            outcome === "success"
+              ? "job-summary-icon-success"
+              : "job-summary-icon-warning"
+          }`}
+          aria-hidden="true"
+        >
+          {outcome === "success" ? "✓" : "✕"}
+        </span>
+      )}
       <span>{text}</span>
     </div>
   );

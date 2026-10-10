@@ -26,6 +26,13 @@ export const en: Translations = {
     headerKinds: "Found information",
     headerStatus: "Status",
   },
+  skipped: {
+    message: "({count} excluded: {reasons})",
+    reasonSeparator: ", ",
+    folders: "subfolders",
+    unsupported: "unsupported format",
+    duplicates: "duplicates",
+  },
   outputDir: {
     title: "Output folder",
     choose: "Choose folder",
