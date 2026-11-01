@@ -18,7 +18,7 @@ mcleaner-core = { path = "../core" }
 # The only crate that parses PDFs, so that a hostile PDF can bring down the
 # worker but never the app (design §1, §9). chrono-clock and rayon are off:
 # the worker writes no dates and runs one request at a time (design §2).
-lopdf = { version = "0.45.0", default-features = false }
+lopdf = { version = "0.46.0", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
